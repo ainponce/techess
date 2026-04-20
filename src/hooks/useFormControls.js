@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 
-const LS_KEY = 'techess:form-controls'
+const LS_KEY_BASE = 'techess:form-controls'
 
-// Canonical pose for the selected piece during the form stage. Used as the
-// production value (no GUI) and as the starting point for the dev tuner.
-const DEFAULTS = {
+// Canonical pose for the selected piece during the form stage. Desktop sits
+// the piece to the left of a right-aligned form; portrait places it above a
+// stacked form. Dev GUI tuner writes to separate LS slots per layout so tweaks
+// on one don't leak to the other.
+const DEFAULTS_DESKTOP = {
   x: -4.2,
   y: -1.9,
   z: -1.4,
@@ -15,24 +17,44 @@ const DEFAULTS = {
   spinSpeed: 0.4,
 }
 
+const DEFAULTS_MOBILE = {
+  x: 0,
+  y: 1.4,
+  z: 0,
+  scale: 1.6,
+  rx: 0,
+  ry: 0,
+  rz: 0,
+  spinSpeed: 0.4,
+}
+
 const IS_DEV = import.meta.env.DEV
 
-function load() {
-  if (typeof window === 'undefined') return { ...DEFAULTS }
+function lsKey(isPortrait) {
+  return isPortrait ? `${LS_KEY_BASE}:mobile` : `${LS_KEY_BASE}:desktop`
+}
+
+function defaultsFor(isPortrait) {
+  return isPortrait ? DEFAULTS_MOBILE : DEFAULTS_DESKTOP
+}
+
+function load(isPortrait) {
+  const defaults = defaultsFor(isPortrait)
+  if (typeof window === 'undefined') return { ...defaults }
   try {
-    const raw = window.localStorage.getItem(LS_KEY)
-    if (!raw) return { ...DEFAULTS }
+    const raw = window.localStorage.getItem(lsKey(isPortrait))
+    if (!raw) return { ...defaults }
     const parsed = JSON.parse(raw)
-    return { ...DEFAULTS, ...parsed }
+    return { ...defaults, ...parsed }
   } catch {
-    return { ...DEFAULTS }
+    return { ...defaults }
   }
 }
 
-function save(state) {
+function save(state, isPortrait) {
   if (typeof window === 'undefined') return
   try {
-    window.localStorage.setItem(LS_KEY, JSON.stringify(state))
+    window.localStorage.setItem(lsKey(isPortrait), JSON.stringify(state))
   } catch {
     /* ignore quota errors */
   }
@@ -44,8 +66,16 @@ function save(state) {
  * always return the canonical defaults — the panel and lil-gui itself are
  * dynamically imported so they don't ship in the prod bundle.
  */
-export default function useFormControls(active) {
-  const [values, setValues] = useState(() => (IS_DEV ? load() : { ...DEFAULTS }))
+export default function useFormControls(active, device) {
+  const isPortrait = device?.isPortrait ?? false
+  const [values, setValues] = useState(() =>
+    IS_DEV ? load(isPortrait) : { ...defaultsFor(isPortrait) },
+  )
+
+  // When the user rotates the device while on the form stage, swap pose.
+  useEffect(() => {
+    setValues(IS_DEV ? load(isPortrait) : { ...defaultsFor(isPortrait) })
+  }, [isPortrait])
 
   useEffect(() => {
     if (!IS_DEV || !active) return
@@ -54,14 +84,15 @@ export default function useFormControls(active) {
 
     import('lil-gui').then(({ default: GUI }) => {
       if (cancelled) return
-      gui = new GUI({ title: 'Pieza seleccionada' })
+      gui = new GUI({ title: `Pieza seleccionada (${isPortrait ? 'mobile' : 'desktop'})` })
       const state = { ...values }
+      const defaults = defaultsFor(isPortrait)
 
       const update = (key) => (v) => {
         state[key] = v
         setValues((prev) => {
           const next = { ...prev, [key]: v }
-          save(next)
+          save(next, isPortrait)
           return next
         })
       }
@@ -79,10 +110,10 @@ export default function useFormControls(active) {
         .add(
           {
             reset: () => {
-              window.localStorage.removeItem(LS_KEY)
-              setValues({ ...DEFAULTS })
+              window.localStorage.removeItem(lsKey(isPortrait))
+              setValues({ ...defaults })
               gui.controllersRecursive().forEach((c) => {
-                if (c.property in DEFAULTS) c.setValue(DEFAULTS[c.property])
+                if (c.property in defaults) c.setValue(defaults[c.property])
               })
             },
           },
@@ -96,7 +127,7 @@ export default function useFormControls(active) {
       gui?.destroy()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active])
+  }, [active, isPortrait])
 
   return values
 }

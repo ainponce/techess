@@ -4,6 +4,7 @@ import StageScene from './components/StageScene'
 import RegistrationForm from './components/RegistrationForm'
 import useFormControls from './hooks/useFormControls'
 import useMoveSound from './hooks/useMoveSound'
+import useDeviceTier from './hooks/useDeviceTier'
 import './App.css'
 
 const PIECES = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn']
@@ -87,7 +88,8 @@ function AppInner() {
     setStage('board')
   }
 
-  const formControls = useFormControls(stage === 'form')
+  const device = useDeviceTier()
+  const formControls = useFormControls(stage === 'form', device)
 
   // Wire keyboard: arrows rotate, Enter/Space chooses. Only active in 'selecting'.
   const [subscribe] = useKeyboardControls()
@@ -119,6 +121,7 @@ function AppInner() {
           selected={selected}
           color={color}
           formControls={formControls}
+          device={device}
         />
       </div>
 

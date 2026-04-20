@@ -97,6 +97,7 @@
   opacity: 0.4;
   cursor: pointer;
   transition: opacity 0.18s ease;
+  touch-action: manipulation;
 }
 
 .color-toggle__option.is-active {
@@ -130,6 +131,7 @@
   color: var(--ink);
   opacity: 0.75;
   transition: opacity 0.18s ease, transform 0.18s ease;
+  touch-action: manipulation;
 }
 
 .carousel-ui__arrow {
@@ -301,12 +303,17 @@
   transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
-.form__submit:hover {
+.form__submit:hover:not(:disabled) {
   opacity: 1;
 }
 
-.form__submit:active {
+.form__submit:active:not(:disabled) {
   transform: translateY(1px);
+}
+
+.form__submit:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .form__optional {
@@ -433,5 +440,66 @@
 
   .carousel-ui__name {
     font-size: 32px;
+  }
+}
+
+@media (max-width: 768px) {
+  .page__form-col {
+    padding: 16px 16px 28px;
+    padding-bottom: max(28px, env(safe-area-inset-bottom));
+  }
+
+  .form {
+    padding: 0;
+    gap: 18px;
+  }
+
+  .form__title {
+    font-size: 22px;
+  }
+
+  .form__lede {
+    font-size: 12.5px;
+  }
+
+  .form__row--two {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .carousel-ui {
+    padding: 0 16px 36px;
+    gap: 12px;
+  }
+
+  .carousel-ui__nav {
+    gap: 20px;
+  }
+
+  .carousel-ui__arrow {
+    width: 44px;
+    height: 44px;
+  }
+
+  .carousel-ui__choose {
+    min-width: 96px;
+    height: 44px;
+    padding: 0 14px;
+  }
+
+  .color-toggle {
+    font-size: 12px;
+    gap: 14px;
+  }
+
+  .color-toggle__option {
+    padding: 10px 4px;
+  }
+
+  .logo-mark {
+    top: 20px;
+    left: 20px;
+    width: 28px;
+    height: 28px;
   }
 }

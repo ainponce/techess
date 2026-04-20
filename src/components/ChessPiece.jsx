@@ -18,7 +18,7 @@ function Primitive({ variant }) {
   if (variant === 'sphere') {
     return (
       <mesh castShadow>
-        <sphereGeometry args={[0.9, 48, 48]} />
+        <sphereGeometry args={[0.9, 24, 24]} />
         {material}
       </mesh>
     )
@@ -33,27 +33,38 @@ function Primitive({ variant }) {
   }
   return (
     <mesh castShadow>
-      <capsuleGeometry args={[0.55, 1.1, 16, 32]} />
+      <capsuleGeometry args={[0.55, 1.1, 8, 16]} />
       {material}
     </mesh>
   )
 }
 
+// One tuned material instance per (source material, color variant). three.js
+// happily shares materials across meshes, so 32 on-board pieces end up with
+// ~2 materials in GPU instead of ~32 (one per original mesh × 2 colors).
+const MATERIAL_CACHE = new Map()
+function getTunedMaterial(original, dark) {
+  const key = `${original.uuid}|${dark ? 'b' : 'w'}`
+  const cached = MATERIAL_CACHE.get(key)
+  if (cached) return cached
+  const mat = original.clone()
+  if (dark && mat.color) mat.color.set('#181818')
+  if ('roughness' in mat) mat.roughness = 0.85
+  if ('metalness' in mat) mat.metalness = 0
+  MATERIAL_CACHE.set(key, mat)
+  return mat
+}
+
 function GltfModel({ url, scale, bottomAlign, dark }) {
   const { scene } = useGLTF(url)
-  // Clone so multiple ChessPiece instances of the same variant can coexist
-  // (three.js can't reparent a single object into multiple groups), and clone
-  // every material so we can tune the surface response — flatter, less shiny —
-  // and optionally recolor it to serve as the black army.
+  // scene.clone(true) duplicates the object graph but keeps geometry/material
+  // references shared — we just swap in a cached tuned material per mesh so
+  // all clones of the same color share materials and GPU upload is one-shot.
   const cloned = useMemo(() => {
     const c = scene.clone(true)
     c.traverse((obj) => {
       if (!obj.isMesh || !obj.material) return
-      const mat = obj.material.clone()
-      if (dark && mat.color) mat.color.set('#181818')
-      if ('roughness' in mat) mat.roughness = 0.85
-      if ('metalness' in mat) mat.metalness = 0
-      obj.material = mat
+      obj.material = getTunedMaterial(obj.material, dark)
     })
     return c
   }, [scene, dark])
@@ -76,6 +87,7 @@ export default function ChessPiece({
 }) {
   const ref = useRef(null)
   useFrame((_, delta) => {
+    if (spinSpeed === 0) return
     if (ref.current) ref.current.rotation.y += delta * spinSpeed
   })
   const gltf = GLTF_MODELS[variant]

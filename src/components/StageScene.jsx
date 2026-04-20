@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useRef } from 'react'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Environment, PerspectiveCamera, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
@@ -68,7 +68,8 @@ const BOARD_PIECE_SCALES = {
 }
 const boardScaleFor = (v) => BOARD_BASE * (BOARD_PIECE_SCALES[v] ?? 0.8)
 
-const CAROUSEL_RADIUS = 2.4
+const CAROUSEL_RADIUS_DESKTOP = 2.4
+const CAROUSEL_RADIUS_PORTRAIT = 1.8
 
 // Per-variant correction applied on top of the GUI scale, so we can normalize
 // the visual size of pieces whose GLTFs render too big at the shared value.
@@ -137,15 +138,22 @@ function shortestAngleDelta(target, current) {
   return diff
 }
 
-function PieceController({ stage, piece, idx, centerIdx, selected, color, formControls }) {
+function PieceController({ stage, piece, idx, centerIdx, selected, color, formControls, isPortrait }) {
   const groupRef = useRef(null)
   const innerRef = useRef(null)
   // tracks the piece's current ring angle so we can lerp along the shortest arc
   const angleRef = useRef(((idx - centerIdx) / PIECES.length) * TWO_PI)
+  // once a hidden piece has fully damped to its parked target we stop spending
+  // frames on it. reset whenever the piece becomes visible again.
+  const settledRef = useRef(false)
 
   useFrame((_, delta) => {
     const g = groupRef.current
     if (!g) return
+    const hidden =
+      (stage === 'form' || stage === 'board') && piece !== selected
+    if (hidden && settledRef.current) return
+    if (!hidden) settledRef.current = false
     // frame-rate independent damping. lower lambda = slower, smoother easing.
     const damp = (cur, tgt, lambda) =>
       THREE.MathUtils.damp(cur, tgt, lambda, delta)
@@ -161,9 +169,10 @@ function PieceController({ stage, piece, idx, centerIdx, selected, color, formCo
       // exponential easing on the angle delta — equivalent to damp() but on a relative value
       angleRef.current += diff * (1 - Math.exp(-RING_LAMBDA * delta))
       const a = angleRef.current
-      g.position.x = Math.sin(a) * CAROUSEL_RADIUS
+      const radius = isPortrait ? CAROUSEL_RADIUS_PORTRAIT : CAROUSEL_RADIUS_DESKTOP
+      g.position.x = Math.sin(a) * radius
       g.position.y = damp(g.position.y, 0, RING_LAMBDA)
-      g.position.z = (Math.cos(a) - 1) * CAROUSEL_RADIUS * 0.6
+      g.position.z = (Math.cos(a) - 1) * radius * 0.6
       g.rotation.x = damp(g.rotation.x, 0, RING_LAMBDA)
       g.rotation.z = damp(g.rotation.z, 0, RING_LAMBDA)
       g.rotation.y = -a
@@ -200,6 +209,16 @@ function PieceController({ stage, piece, idx, centerIdx, selected, color, formCo
       const speed = target.spinSpeed ?? 0.6
       if (target.spinAxis === 'y') innerRef.current.rotation.y += delta * speed
       else innerRef.current.rotation.y = damp(innerRef.current.rotation.y, 0, STAGE_LAMBDA)
+    }
+
+    if (hidden) {
+      const dx = g.position.x - target.position[0]
+      const dy = g.position.y - target.position[1]
+      const dz = g.position.z - target.position[2]
+      const distSq = dx * dx + dy * dy + dz * dz
+      if (distSq < 1e-4 && Math.abs(g.scale.x - 0.001) < 1e-3) {
+        settledRef.current = true
+      }
     }
   })
 
@@ -292,25 +311,36 @@ function BoardPiece({ slot, visible }) {
   )
 }
 
-function CameraRig({ stage, color }) {
+function CameraRig({ stage, color, isPortrait }) {
   const camRef = useRef(null)
   // Interpolated lookAt target so rotation eases with translation rather than
   // snapping the moment `stage` changes.
   const lookRef = useRef(new THREE.Vector3(0, 0, 0))
   const prevStageRef = useRef(stage)
+
+  // fov changes with orientation; three won't rebuild the projection matrix
+  // from a bare assignment, so nudge it when isPortrait flips.
+  useEffect(() => {
+    const cam = camRef.current
+    if (!cam) return
+    cam.fov = isPortrait ? 46 : 38
+    cam.updateProjectionMatrix()
+  }, [isPortrait])
+
   useFrame((_, delta) => {
     const cam = camRef.current
     if (!cam) return
-    let target = [0, 0.4, 6]
+    let target = isPortrait ? [0, 0.3, 5.4] : [0, 0.4, 6]
     let look = [0, 0, 0]
     if (stage === 'form') {
-      target = [0.5, 0, 6]
-      look = [-0.5, -0.5, 0]
+      // Portrait: piece sits up top, form below — camera aims higher.
+      target = isPortrait ? [0, 1.2, 6] : [0.5, 0, 6]
+      look = isPortrait ? [0, 0.2, 0] : [-0.5, -0.5, 0]
     } else if (stage === 'board') {
       // Frame the board from the side of the chosen color so the player's
       // army is in the foreground. Flipping z mirrors the view 180° around Y.
       const sideZ = color === 'black' ? -7.8 : 7.8
-      target = [0, 5.2, sideZ]
+      target = isPortrait ? [0, 6.2, sideZ * 1.05] : [0, 5.2, sideZ]
       look = [0, -0.4, 0]
     }
     // Frame-rate independent critical-damp. Lower lambda = slower/cinematic.
@@ -335,21 +365,44 @@ function CameraRig({ stage, color }) {
     prevStageRef.current = stage
     cam.lookAt(lookRef.current)
   })
-  return <PerspectiveCamera ref={camRef} makeDefault position={[0, 0.4, 6]} fov={38} />
+  return (
+    <PerspectiveCamera
+      ref={camRef}
+      makeDefault
+      position={[0, 0.4, 6]}
+      fov={isPortrait ? 46 : 38}
+    />
+  )
 }
 
-export default function StageScene({ stage, centerIdx, selected, color, formControls }) {
+const DPR_BY_TIER = {
+  low: [1, 1.25],
+  mid: [1, 1.5],
+  high: [1, 2],
+}
+
+export default function StageScene({ stage, centerIdx, selected, color, formControls, device }) {
+  const tier = device?.tier ?? 'high'
+  const isPortrait = device?.isPortrait ?? false
+  const highTier = tier === 'high'
   return (
-    <Canvas shadows dpr={[1, 2]} gl={{ antialias: true, alpha: true }}>
-      <CameraRig stage={stage} color={color} />
-      <ambientLight intensity={0.45} />
+    <Canvas
+      shadows={highTier}
+      dpr={DPR_BY_TIER[tier]}
+      gl={{ antialias: tier !== 'low', alpha: true, powerPreference: 'high-performance' }}
+    >
+      <CameraRig stage={stage} color={color} isPortrait={isPortrait} />
+      {/* hemisphere gives a soft sky/ground fill that replaces the HDR env on
+          mid/low tiers without noticeably changing the flat standard material look. */}
+      <hemisphereLight args={['#f5f1ea', '#1a1411', highTier ? 0.35 : 0.55]} />
+      <ambientLight intensity={highTier ? 0.2 : 0.15} />
       <directionalLight
         position={[4, 6, 3]}
-        intensity={1.2}
-        castShadow
-        shadow-mapSize={[1024, 1024]}
+        intensity={highTier ? 1.2 : 1.0}
+        castShadow={highTier}
+        shadow-mapSize={[512, 512]}
       />
-      <Environment preset="studio" />
+      {highTier && <Environment preset="studio" />}
       <Suspense fallback={null}>
         {PIECES.map((piece, idx) => (
           <PieceController
@@ -361,6 +414,7 @@ export default function StageScene({ stage, centerIdx, selected, color, formCont
             selected={selected}
             color={color}
             formControls={formControls}
+            isPortrait={isPortrait}
           />
         ))}
         <BoardArmy stage={stage} selected={selected} color={color} />
