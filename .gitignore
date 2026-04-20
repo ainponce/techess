@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Local MCP / Claude Code config — may contain project refs or endpoints we
+# don't want in a public fork. Copy to .mcp.local.json if you need to share.
+.mcp.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

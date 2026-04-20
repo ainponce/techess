@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { supabase } from '../lib/supabase'
 
 const INITIAL = {
   nombre: '',
@@ -35,6 +36,8 @@ function normalizeTwitter(raw) {
 export default function RegistrationForm({ onSubmitted }) {
   const [form, setForm] = useState(INITIAL)
   const [lookup, setLookup] = useState({ status: 'idle' })
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
 
   const update = (key) => (e) =>
     setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -87,30 +90,46 @@ export default function RegistrationForm({ onSubmitted }) {
       ? lookup.stats?.[tiempoMeta.statsKey]?.last?.rating ?? null
       : null
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault()
+    if (submitting) return
+    setSubmitting(true)
+    setSubmitError(null)
+
+    const found = lookup.status === 'found' ? lookup.profile : null
+    const stats = lookup.status === 'found' ? lookup.stats : null
+    // Column names match public.techess_registrations exactly (snake_case).
     const payload = {
       nombre: form.nombre.trim(),
-      email: form.email.trim(),
+      email: form.email.trim().toLowerCase(),
       tiempo: form.tiempo,
-      twitterHandle: normalizeTwitter(form.twitterHandle) || null,
-      chessCom:
-        lookup.status === 'found'
-          ? {
-              username: lookup.profile.username,
-              name: lookup.profile.name ?? null,
-              country: lookup.profile.country ?? null,
-              avatar: lookup.profile.avatar ?? null,
-              url: lookup.profile.url ?? null,
-              ratings: {
-                rapid: lookup.stats?.chess_rapid?.last?.rating ?? null,
-                blitz: lookup.stats?.chess_blitz?.last?.rating ?? null,
-                bullet: lookup.stats?.chess_bullet?.last?.rating ?? null,
-              },
-            }
-          : null,
+      twitter_handle: normalizeTwitter(form.twitterHandle) || null,
+      chess_username: found?.username ?? null,
+      chess_name: found?.name ?? null,
+      chess_country: found?.country ?? null,
+      chess_avatar: found?.avatar ?? null,
+      chess_url: found?.url ?? null,
+      chess_rating_rapid: stats?.chess_rapid?.last?.rating ?? null,
+      chess_rating_blitz: stats?.chess_blitz?.last?.rating ?? null,
+      chess_rating_bullet: stats?.chess_bullet?.last?.rating ?? null,
     }
-    console.log('registration payload:', payload)
+
+    const { error } = await supabase
+      .from('techess_registrations')
+      .insert(payload)
+
+    if (error) {
+      // 23505 = unique_violation on lower(email)
+      if (error.code === '23505') {
+        setSubmitError('Ese email ya está anotado.')
+      } else {
+        console.warn('supabase insert failed', error)
+        setSubmitError('No pudimos guardar tu inscripción. Probá de nuevo.')
+      }
+      setSubmitting(false)
+      return
+    }
+
     onSubmitted?.(payload)
   }
 
@@ -179,9 +198,16 @@ export default function RegistrationForm({ onSubmitted }) {
         </select>
       </label>
 
-      <button type="submit" className="form__submit">
-        ME ANOTO
+      <button
+        type="submit"
+        className="form__submit"
+        disabled={submitting}
+      >
+        {submitting ? 'ENVIANDO…' : 'ME ANOTO'}
       </button>
+      {submitError && (
+        <p className="form__hint form__hint--warn">{submitError}</p>
+      )}
     </form>
   )
 }
