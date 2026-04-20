@@ -157,6 +157,7 @@ function PieceController({ stage, piece, idx, centerIdx, selected, color, formCo
   // once a hidden piece has fully damped to its parked target we stop spending
   // frames on it. reset whenever the piece becomes visible again.
   const settledRef = useRef(false)
+  const prevStageRef = useRef(stage)
 
   useFrame((_, delta) => {
     const g = groupRef.current
@@ -205,6 +206,23 @@ function PieceController({ stage, piece, idx, centerIdx, selected, color, formCo
     const target = stage === 'form'
       ? formTarget(piece, selected, formControls, isPortrait)
       : boardTarget(piece, selected, color)
+
+    // On portrait we park the piece at y=-10 during 'form'. Entering 'board'
+    // it would otherwise damp straight up through the board surface. Snap
+    // the selected piece to its slot on first frame of 'board' instead.
+    if (
+      prevStageRef.current !== 'board' &&
+      stage === 'board' &&
+      piece === selected &&
+      isPortrait
+    ) {
+      g.position.set(target.position[0], target.position[1], target.position[2])
+      g.scale.setScalar(target.scale)
+      g.rotation.set(target.rotation[0], target.rotation[1], target.rotation[2])
+      prevStageRef.current = stage
+      return
+    }
+    prevStageRef.current = stage
 
     g.position.x = damp(g.position.x, target.position[0], STAGE_LAMBDA)
     g.position.y = damp(g.position.y, target.position[1], STAGE_LAMBDA)
@@ -330,8 +348,7 @@ function CameraRig({ stage, color, isPortrait }) {
   const lookRef = useRef(new THREE.Vector3(0, 0, 0))
   const prevStageRef = useRef(stage)
 
-  // fov changes with orientation; three won't rebuild the projection matrix
-  // from a bare assignment, so nudge it when isPortrait flips.
+  // Base fov per orientation; per-stage overrides happen in-frame.
   useEffect(() => {
     const cam = camRef.current
     if (!cam) return
@@ -344,6 +361,9 @@ function CameraRig({ stage, color, isPortrait }) {
     if (!cam) return
     let target = isPortrait ? [0, 0.3, 5.4] : [0, 0.4, 6]
     let look = [0, 0, 0]
+    // FOV defaults to the orientation base; board portrait needs more to fit
+    // the 8×0.7 board horizontally on a narrow viewport.
+    let fovTarget = isPortrait ? 46 : 38
     if (stage === 'form') {
       // Portrait: piece sits up top, form below — camera aims higher.
       target = isPortrait ? [0, 1.2, 6] : [0.5, 0, 6]
@@ -352,8 +372,9 @@ function CameraRig({ stage, color, isPortrait }) {
       // Frame the board from the side of the chosen color so the player's
       // army is in the foreground. Flipping z mirrors the view 180° around Y.
       const sideZ = color === 'black' ? -7.8 : 7.8
-      target = isPortrait ? [0, 6.2, sideZ * 1.05] : [0, 5.2, sideZ]
+      target = isPortrait ? [0, 5.0, sideZ * 1.8] : [0, 5.2, sideZ]
       look = [0, -0.4, 0]
+      if (isPortrait) fovTarget = 54
     }
     // Frame-rate independent critical-damp. Lower lambda = slower/cinematic.
     const damp = (cur, tgt, lambda) =>
@@ -366,6 +387,10 @@ function CameraRig({ stage, color, isPortrait }) {
     if (prevStageRef.current !== 'board' && stage === 'board') {
       cam.position.set(target[0], target[1], target[2])
       lookRef.current.set(look[0], look[1], look[2])
+      // Snap fov too so the first frame of the board already frames the
+      // whole 8-tile width on portrait instead of catching up via damp.
+      cam.fov = fovTarget
+      cam.updateProjectionMatrix()
     } else {
       cam.position.x = damp(cam.position.x, target[0], POS_LAMBDA)
       cam.position.y = damp(cam.position.y, target[1], POS_LAMBDA)
@@ -375,6 +400,16 @@ function CameraRig({ stage, color, isPortrait }) {
       lookRef.current.z = damp(lookRef.current.z, look[2], LOOK_LAMBDA)
     }
     prevStageRef.current = stage
+
+    // Damp fov in lockstep with position so the zoom-out on entering board
+    // feels like the camera move rather than a separate snap.
+    const FOV_LAMBDA = 2
+    const nextFov = THREE.MathUtils.damp(cam.fov, fovTarget, FOV_LAMBDA, delta)
+    if (Math.abs(nextFov - cam.fov) > 1e-3) {
+      cam.fov = nextFov
+      cam.updateProjectionMatrix()
+    }
+
     cam.lookAt(lookRef.current)
   })
   return (
