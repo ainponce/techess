@@ -471,7 +471,9 @@
 
 @media (max-width: 768px) {
   .page__form-col {
-    padding: 16px 16px 28px;
+    align-items: center;
+    padding: 24px 20px 28px;
+    padding-top: max(24px, env(safe-area-inset-top));
     padding-bottom: max(28px, env(safe-area-inset-bottom));
   }
 

@@ -77,7 +77,18 @@ const FORM_SCALE_FACTOR = {
   rook: 0.7,
 }
 
-function formTarget(piece, selected, controls) {
+function formTarget(piece, selected, controls, isPortrait) {
+  // Portrait has no room for the piece alongside the stacked form — hide
+  // everything during 'form' so the inputs own the viewport.
+  if (isPortrait) {
+    return {
+      position: [0, -10, 0],
+      scale: 0.001,
+      rotation: [0, 0, 0],
+      visible: false,
+      spinAxis: 'none',
+    }
+  }
   if (piece === selected) {
     const factor = FORM_SCALE_FACTOR[piece] ?? 1
     return {
@@ -151,7 +162,8 @@ function PieceController({ stage, piece, idx, centerIdx, selected, color, formCo
     const g = groupRef.current
     if (!g) return
     const hidden =
-      (stage === 'form' || stage === 'board') && piece !== selected
+      (stage === 'form' && (isPortrait || piece !== selected)) ||
+      (stage === 'board' && piece !== selected)
     if (hidden && settledRef.current) return
     if (!hidden) settledRef.current = false
     // frame-rate independent damping. lower lambda = slower, smoother easing.
@@ -191,7 +203,7 @@ function PieceController({ stage, piece, idx, centerIdx, selected, color, formCo
 
     // form / board: damp toward absolute world target
     const target = stage === 'form'
-      ? formTarget(piece, selected, formControls)
+      ? formTarget(piece, selected, formControls, isPortrait)
       : boardTarget(piece, selected, color)
 
     g.position.x = damp(g.position.x, target.position[0], STAGE_LAMBDA)
