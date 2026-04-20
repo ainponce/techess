@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Environment, PerspectiveCamera, useGLTF } from '@react-three/drei'
+import { Environment, Lightformer, PerspectiveCamera, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import ChessPiece from './ChessPiece'
 
@@ -439,22 +439,44 @@ export default function StageScene({ stage, centerIdx, selected, color, formCont
       gl={{ antialias: tier !== 'low', alpha: true, powerPreference: 'high-performance' }}
     >
       <CameraRig stage={stage} color={color} isPortrait={isPortrait} />
-      {/* hemisphere gives a soft sky/ground fill that replaces the HDR env on
-          mid/low tiers without noticeably changing the flat standard material look. */}
-      <hemisphereLight args={['#f5f1ea', '#2a241f', highTier ? 0.35 : 0.75]} />
-      <ambientLight intensity={highTier ? 0.2 : 0.2} />
+      <hemisphereLight args={['#f5f1ea', '#2a241f', highTier ? 0.35 : 0.45]} />
+      <ambientLight intensity={0.2} />
       <directionalLight
         position={[4, 6, 3]}
-        intensity={highTier ? 1.2 : 1.1}
+        intensity={highTier ? 1.2 : 1.0}
         castShadow={highTier}
         shadow-mapSize={[512, 512]}
       />
-      {/* Opposite-side fill only where there's no HDR env to bounce light into
-          the shadow side — keeps black pieces readable on mobile. */}
-      {!highTier && (
-        <directionalLight position={[-3, 3, -2]} intensity={0.45} />
+      {highTier ? (
+        <Environment preset="studio" />
+      ) : (
+        // Procedural studio: one-shot cubemap render from Lightformers. Gives
+        // pieces the IBL highlights the HDR preset provides on desktop without
+        // the network cost (~1MB .hdr) or the per-frame expense.
+        <Environment frames={1} resolution={128}>
+          <Lightformer
+            form="rect"
+            intensity={2.2}
+            position={[0, 4, 3]}
+            scale={[6, 2, 1]}
+            color="#f5f1ea"
+          />
+          <Lightformer
+            form="rect"
+            intensity={0.9}
+            position={[-3.5, 2, -1.5]}
+            scale={[3, 2, 1]}
+            color="#d8d4c8"
+          />
+          <Lightformer
+            form="rect"
+            intensity={0.6}
+            position={[3.5, 1.5, -2.5]}
+            scale={[2.5, 3, 1]}
+            color="#c9b796"
+          />
+        </Environment>
       )}
-      {highTier && <Environment preset="studio" />}
       <Suspense fallback={null}>
         {PIECES.map((piece, idx) => (
           <PieceController
