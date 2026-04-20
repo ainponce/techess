@@ -1,14 +1,21 @@
 .page {
+  /* Default = piece is white → dark board/theme. Inverted under
+     [data-color="black"] below (piece is black → light board/theme). */
   --ink: #f4f3ef;
+  --ink-soft-08: rgba(244, 243, 239, 0.08);
+  --ink-soft-14: rgba(244, 243, 239, 0.14);
+  --ink-soft-16: rgba(244, 243, 239, 0.16);
+  --ink-soft-18: rgba(244, 243, 239, 0.18);
+  --ink-soft-92: rgba(244, 243, 239, 0.92);
   --muted: rgba(244, 243, 239, 0.6);
   --bg: #050505;
   --glass-bg: rgba(20, 20, 22, 0.55);
-  --glass-border: rgba(244, 243, 239, 0.14);
-  --glass-inset: rgba(244, 243, 239, 0.08);
+  --glass-border: var(--ink-soft-14);
+  --glass-inset: var(--ink-soft-08);
   --glass-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
   --input-bg: rgba(15, 15, 17, 0.7);
-  --input-border: rgba(244, 243, 239, 0.16);
-  --btn-bg: rgba(244, 243, 239, 0.92);
+  --input-border: var(--ink-soft-16);
+  --btn-bg: var(--ink-soft-92);
   --btn-ink: #0a0a0c;
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='8' viewBox='0 0 14 8' fill='none'%3E%3Cpath d='M1 1L7 7L13 1' stroke='%23f4f3ef' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 
@@ -19,6 +26,25 @@
   color: var(--ink);
   background: var(--bg);
   overflow: hidden;
+  transition: background-color 0.6s ease, color 0.6s ease;
+}
+
+/* Invert the theme only where the user is interacting with their chosen
+   piece. In 'board' we show both armies on the full 8x8 — keeping the dark
+   theme there avoids one army disappearing into a mirrored background. */
+.page[data-color='black']:not([data-stage='board']) {
+  --ink: #0a0a0c;
+  --ink-soft-08: rgba(10, 10, 12, 0.08);
+  --ink-soft-14: rgba(10, 10, 12, 0.14);
+  --ink-soft-16: rgba(10, 10, 12, 0.16);
+  --ink-soft-18: rgba(10, 10, 12, 0.18);
+  --ink-soft-92: rgba(10, 10, 12, 0.92);
+  --muted: rgba(10, 10, 12, 0.55);
+  --bg: #f4f3ef;
+  --glass-bg: rgba(240, 240, 242, 0.55);
+  --glass-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.2);
+  --input-bg: rgba(250, 250, 252, 0.7);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='8' viewBox='0 0 14 8' fill='none'%3E%3Cpath d='M1 1L7 7L13 1' stroke='%230a0a0c' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 .page__scene {
@@ -255,7 +281,7 @@
   height: 36px;
   padding: 0;
   border: 0;
-  border-bottom: 1px solid rgba(244, 243, 239, 0.18);
+  border-bottom: 1px solid var(--ink-soft-18);
   border-radius: 0;
   background: transparent;
   color: var(--ink);
@@ -349,7 +375,7 @@
   height: 22px;
   border-radius: 50%;
   object-fit: cover;
-  background: rgba(244, 243, 239, 0.08);
+  background: var(--ink-soft-08);
   border: 1px solid var(--glass-border);
 }
 

@@ -91,6 +91,15 @@ function AppInner() {
   const device = useDeviceTier()
   const formControls = useFormControls(stage === 'form', device)
 
+  // Keep body bg in sync with the page theme so iOS overscroll doesn't show
+  // a black strip when we flip to the light variant. Board always stays dark
+  // because we render both armies there.
+  useEffect(() => {
+    const inverted = color === 'black' && stage !== 'board'
+    document.body.style.transition = 'background-color 0.6s ease'
+    document.body.style.backgroundColor = inverted ? '#f4f3ef' : '#050505'
+  }, [color, stage])
+
   // Wire keyboard: arrows rotate, Enter/Space chooses. Only active in 'selecting'.
   const [subscribe] = useKeyboardControls()
   useEffect(() => {
@@ -113,7 +122,7 @@ function AppInner() {
   }, [subscribe])
 
   return (
-    <div className="page" data-stage={stage}>
+    <div className="page" data-stage={stage} data-color={color}>
       <div className="page__scene">
         <StageScene
           stage={stage}
