@@ -394,14 +394,19 @@ export default function StageScene({ stage, centerIdx, selected, color, formCont
       <CameraRig stage={stage} color={color} isPortrait={isPortrait} />
       {/* hemisphere gives a soft sky/ground fill that replaces the HDR env on
           mid/low tiers without noticeably changing the flat standard material look. */}
-      <hemisphereLight args={['#f5f1ea', '#1a1411', highTier ? 0.35 : 0.55]} />
-      <ambientLight intensity={highTier ? 0.2 : 0.15} />
+      <hemisphereLight args={['#f5f1ea', '#2a241f', highTier ? 0.35 : 0.75]} />
+      <ambientLight intensity={highTier ? 0.2 : 0.2} />
       <directionalLight
         position={[4, 6, 3]}
-        intensity={highTier ? 1.2 : 1.0}
+        intensity={highTier ? 1.2 : 1.1}
         castShadow={highTier}
         shadow-mapSize={[512, 512]}
       />
+      {/* Opposite-side fill only where there's no HDR env to bounce light into
+          the shadow side — keeps black pieces readable on mobile. */}
+      {!highTier && (
+        <directionalLight position={[-3, 3, -2]} intensity={0.45} />
+      )}
       {highTier && <Environment preset="studio" />}
       <Suspense fallback={null}>
         {PIECES.map((piece, idx) => (

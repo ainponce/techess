@@ -48,7 +48,11 @@ function getTunedMaterial(original, dark) {
   const cached = MATERIAL_CACHE.get(key)
   if (cached) return cached
   const mat = original.clone()
-  if (dark && mat.color) mat.color.set('#181818')
+  // #2e2e2e reads as black against the #050505 page bg without relying on the
+  // studio HDR's IBL bounce — which we drop on mid/low tiers. With the env on
+  // (desktop) it still looks deep-black; without it (mobile), the piece keeps
+  // a visible silhouette instead of fading into the background.
+  if (dark && mat.color) mat.color.set('#2e2e2e')
   if ('roughness' in mat) mat.roughness = 0.85
   if ('metalness' in mat) mat.metalness = 0
   MATERIAL_CACHE.set(key, mat)
