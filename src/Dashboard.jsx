@@ -27,7 +27,7 @@ export default function Dashboard() {
   const handleSignIn = async ({ email, password }) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      if (error.message?.toLowerCase().includes('invalid login')) {
+      if (error.code === 'invalid_credentials' || error.message?.toLowerCase().includes('invalid login')) {
         throw new Error('Email o password incorrectos.')
       }
       throw new Error('No pudimos entrar. Probá de nuevo.')
