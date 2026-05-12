@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-export default function TournamentPlayerPicker({ tournament, alreadyAddedIds, onCancel, onConfirm }) {
+export default function TournamentPlayerPicker({ tournament, alreadyAddedIds, onCancel, onConfirm, onSessionExpired }) {
   const [registrations, setRegistrations] = useState([])
   const [selected, setSelected] = useState(new Set())
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -16,13 +17,24 @@ export default function TournamentPlayerPicker({ tournament, alreadyAddedIds, on
         .select('id, nombre, email, chess_username, chess_rating_rapid, chess_rating_blitz, chess_rating_bullet')
         .order('nombre', { ascending: true })
       if (!active) return
-      if (!error) setRegistrations(data ?? [])
+      if (error) {
+        if (error.code === 'PGRST301' || error.message?.toLowerCase().includes('jwt')) {
+          if (onSessionExpired) await onSessionExpired()
+          setLoading(false)
+          return
+        }
+        console.warn('picker registrations load failed', error)
+        setLoadError('No pudimos cargar la lista de inscriptos.')
+        setLoading(false)
+        return
+      }
+      setRegistrations(data ?? [])
       setLoading(false)
     })()
     return () => {
       active = false
     }
-  }, [])
+  }, [onSessionExpired])
 
   const ratingCol = `chess_rating_${tournament.tiempo}`
   const available = useMemo(() => {
@@ -77,7 +89,10 @@ export default function TournamentPlayerPicker({ tournament, alreadyAddedIds, on
         />
         <div className="dashboard__picker-list">
           {loading && <div className="dashboard__state">Cargando…</div>}
-          {!loading && filtered.length === 0 && (
+          {!loading && loadError && (
+            <div className="dashboard__state">{loadError}</div>
+          )}
+          {!loading && !loadError && filtered.length === 0 && (
             <div className="dashboard__state">No hay inscriptos disponibles.</div>
           )}
           {!loading &&

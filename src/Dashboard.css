@@ -720,3 +720,12 @@
 .dashboard__pairings--past {
   margin-top: 4px;
 }
+
+.dashboard__warning {
+  font-size: 12px;
+  color: #ffd66b;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 214, 107, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 214, 107, 0.08);
+}

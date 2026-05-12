@@ -38,6 +38,7 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
   const [editingRating, setEditingRating] = useState(null) // participant id
   const [editingValue, setEditingValue] = useState('')
   const [errorMsg, setErrorMsg] = useState(null)
+  const [warningMsg, setWarningMsg] = useState(null)
   const [matches, setMatches] = useState([])
 
   const load = useCallback(async () => {
@@ -153,6 +154,7 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
         current_round: 1,
       })
       setTournament(next)
+      await load()
     } catch (err) {
       console.warn('start failed', err)
       setErrorMsg('No pudimos empezar el torneo.')
@@ -184,7 +186,9 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
       setTournament(next)
       await load()
       if (warnings.length > 0) {
-        setErrorMsg(`Ronda generada con warnings: ${warnings.join('; ')}`)
+        setWarningMsg(`Ronda generada: ${warnings.join('; ')}`)
+      } else {
+        setWarningMsg(null)
       }
     } catch (err) {
       console.warn('generate next failed', err)
@@ -296,6 +300,7 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
       </header>
 
       {errorMsg && <div className="dashboard__error">{errorMsg}</div>}
+      {warningMsg && <div className="dashboard__warning">{warningMsg}</div>}
 
       <section>
         <div className="dashboard__section-head">
@@ -478,6 +483,7 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
           alreadyAddedIds={participants.map((p) => p.registration_id)}
           onCancel={() => setShowPicker(false)}
           onConfirm={handleAddParticipants}
+          onSessionExpired={onSessionExpired}
         />
       )}
     </div>
