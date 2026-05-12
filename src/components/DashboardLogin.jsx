@@ -15,6 +15,7 @@ export default function DashboardLogin({ onSignIn }) {
       await onSignIn({ email: email.trim().toLowerCase(), password })
     } catch (err) {
       setError(err.message ?? 'No pudimos entrar. Probá de nuevo.')
+    } finally {
       setSubmitting(false)
     }
   }
