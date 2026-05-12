@@ -1,8 +1,10 @@
-.dashboard {
+.dashboard,
+.dashboard-login {
   --ink: #f4f3ef;
   --ink-soft-08: rgba(244, 243, 239, 0.08);
   --ink-soft-14: rgba(244, 243, 239, 0.14);
   --ink-soft-16: rgba(244, 243, 239, 0.16);
+  --ink-soft-92: rgba(244, 243, 239, 0.92);
   --muted: rgba(244, 243, 239, 0.6);
   --bg: #050505;
   --glass-bg: rgba(20, 20, 22, 0.55);
@@ -10,9 +12,11 @@
   --glass-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
   --input-bg: rgba(15, 15, 17, 0.7);
   --input-border: var(--ink-soft-16);
-  --btn-bg: rgba(244, 243, 239, 0.92);
+  --btn-bg: var(--ink-soft-92);
   --btn-ink: #0a0a0c;
+}
 
+.dashboard {
   min-height: 100svh;
   background: var(--bg);
   color: var(--ink);
@@ -278,10 +282,10 @@
   background: var(--ink-soft-08);
   border-radius: 6px;
   margin-bottom: 6px;
-  animation: shimmer 1.2s ease-in-out infinite;
+  animation: dashboard-shimmer 1.2s ease-in-out infinite;
 }
 
-@keyframes shimmer {
+@keyframes dashboard-shimmer {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
