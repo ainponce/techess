@@ -12,8 +12,8 @@ export default function DashboardView({ session, onSignOut }) {
       .select('*')
       .order('created_at', { ascending: false })
     if (error) {
-      // 401/403 → sesión expirada
-      if (error.code === '401' || error.code === '403' || error.status === 401 || error.status === 403) {
+      // JWT expirado / inválido → sesión expirada, mandar al login
+      if (error.code === 'PGRST301' || error.message?.toLowerCase().includes('jwt')) {
         await supabase.auth.signOut()
         return
       }
