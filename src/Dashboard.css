@@ -522,3 +522,114 @@
   gap: 8px;
   flex-wrap: wrap;
 }
+
+.dashboard__modal--lg {
+  max-width: 560px;
+}
+
+.dashboard__picker-list {
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid var(--ink-soft-08);
+  border-radius: 8px;
+}
+
+.dashboard__picker-row {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr auto;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ink-soft-08);
+  align-items: center;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.dashboard__picker-row:last-child {
+  border-bottom: 0;
+}
+
+.dashboard__picker-row:hover {
+  background: var(--ink-soft-08);
+}
+
+.dashboard__picker-name {
+  color: var(--ink);
+}
+
+.dashboard__picker-chess,
+.dashboard__picker-rating {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard__participants {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.dashboard__participant {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1.2fr auto;
+  gap: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  align-items: center;
+  border-radius: 6px;
+}
+
+.dashboard__participant[data-withdrawn='true'] {
+  opacity: 0.5;
+}
+
+.dashboard__participant-name {
+  color: var(--ink);
+}
+
+.dashboard__participant-chess {
+  color: var(--muted);
+}
+
+.dashboard__participant-rating {
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard__participant-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.dashboard__btn--xs {
+  font-size: 10px;
+  padding: 4px 8px;
+}
+
+.dashboard__input--inline {
+  width: 70px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  .dashboard__participant {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .dashboard__picker-row {
+    grid-template-columns: auto 1fr;
+    row-gap: 4px;
+  }
+  .dashboard__picker-chess,
+  .dashboard__picker-rating {
+    grid-column: 2;
+  }
+}
