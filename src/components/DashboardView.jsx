@@ -71,10 +71,11 @@ export default function DashboardView({ session, onSignOut }) {
   const [query, setQuery] = useState('')
 
   const filteredRows = useMemo(() => {
-    const q = query.trim().toLowerCase()
+    const norm = (s) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+    const q = norm(query.trim())
     if (!q) return sortedRows
     return sortedRows.filter((r) => {
-      const haystack = [r.nombre, r.email, r.chess_username].filter(Boolean).join(' ').toLowerCase()
+      const haystack = norm([r.nombre, r.email, r.chess_username].filter(Boolean).join(' '))
       return haystack.includes(q)
     })
   }, [sortedRows, query])
