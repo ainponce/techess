@@ -133,6 +133,12 @@
   letter-spacing: 0.05em;
 }
 
+.dashboard-login__hint {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
 /* Stats */
 .dashboard__stats {
   display: grid;

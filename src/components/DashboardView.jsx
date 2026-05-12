@@ -33,7 +33,7 @@ function compareRows(a, b, key) {
   return String(va).localeCompare(String(vb), 'es')
 }
 
-export default function DashboardView({ session, onSignOut }) {
+export default function DashboardView({ session, onSignOut, onSessionExpired }) {
   const [status, setStatus] = useState('loading') // loading | ready | error
   const [rows, setRows] = useState([])
 
@@ -89,7 +89,7 @@ export default function DashboardView({ session, onSignOut }) {
     if (error) {
       // JWT expirado / inválido → sesión expirada, mandar al login
       if (error.code === 'PGRST301' || error.message?.toLowerCase().includes('jwt')) {
-        await supabase.auth.signOut()
+        await onSessionExpired()
         return
       }
       console.warn('dashboard load failed', error)

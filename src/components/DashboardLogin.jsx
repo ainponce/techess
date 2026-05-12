@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function DashboardLogin({ onSignIn }) {
+export default function DashboardLogin({ onSignIn, hint }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -25,6 +25,8 @@ export default function DashboardLogin({ onSignIn }) {
       <form className="dashboard-login__card" onSubmit={handleSubmit}>
         <span className="dashboard-login__eyebrow">techess · dashboard</span>
         <h1 className="dashboard-login__title">Entrar</h1>
+
+        {hint && <span className="dashboard-login__hint">{hint}</span>}
 
         <label>
           Email

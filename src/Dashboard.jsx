@@ -7,6 +7,7 @@ import './Dashboard.css'
 export default function Dashboard() {
   const [session, setSession] = useState(null)
   const [ready, setReady] = useState(false)
+  const [sessionExpired, setSessionExpired] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -25,6 +26,7 @@ export default function Dashboard() {
   }, [])
 
   const handleSignIn = async ({ email, password }) => {
+    setSessionExpired(false)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       if (error.code === 'invalid_credentials' || error.message?.toLowerCase().includes('invalid login')) {
@@ -35,6 +37,12 @@ export default function Dashboard() {
   }
 
   const handleSignOut = async () => {
+    setSessionExpired(false)
+    await supabase.auth.signOut()
+  }
+
+  const handleSessionExpired = async () => {
+    setSessionExpired(true)
     await supabase.auth.signOut()
   }
 
@@ -43,8 +51,19 @@ export default function Dashboard() {
   }
 
   if (!session) {
-    return <DashboardLogin onSignIn={handleSignIn} />
+    return (
+      <DashboardLogin
+        onSignIn={handleSignIn}
+        hint={sessionExpired ? 'Tu sesión expiró, volvé a entrar.' : null}
+      />
+    )
   }
 
-  return <DashboardView session={session} onSignOut={handleSignOut} />
+  return (
+    <DashboardView
+      session={session}
+      onSignOut={handleSignOut}
+      onSessionExpired={handleSessionExpired}
+    />
+  )
 }
