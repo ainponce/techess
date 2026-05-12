@@ -9,8 +9,9 @@ if (!url || !key) {
   )
 }
 
-// No auth in this app — disable session persistence so we don't touch
-// localStorage for something we never use.
+// Persistencia activada para que la sesión del admin del dashboard sobreviva
+// al reload. El form anon de inscripción en / no usa sesión, así que no se
+// ve afectado.
 export const supabase = createClient(url, key, {
-  auth: { persistSession: false, autoRefreshToken: false },
+  auth: { persistSession: true, autoRefreshToken: true },
 })
