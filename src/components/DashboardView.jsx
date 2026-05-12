@@ -1,9 +1,25 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 export default function DashboardView({ session, onSignOut }) {
   const [status, setStatus] = useState('loading') // loading | ready | error
   const [rows, setRows] = useState([])
+
+  const stats = useMemo(() => {
+    if (rows.length === 0) {
+      return { total: 0, byTiempo: { rapid: 0, blitz: 0, bullet: 0 }, topTiempo: 'rapid', avgRating: null, withChess: 0 }
+    }
+    const byTiempo = { rapid: 0, blitz: 0, bullet: 0 }
+    for (const r of rows) {
+      if (byTiempo[r.tiempo] != null) byTiempo[r.tiempo]++
+    }
+    const topTiempo = ['rapid', 'blitz', 'bullet'].reduce((top, t) => (byTiempo[t] > byTiempo[top] ? t : top), 'rapid')
+    const ratingCol = `chess_rating_${topTiempo}`
+    const ratings = rows.map((r) => r[ratingCol]).filter((v) => typeof v === 'number')
+    const avgRating = ratings.length > 0 ? Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length) : null
+    const withChess = rows.filter((r) => r.chess_username).length
+    return { total: rows.length, byTiempo, topTiempo, avgRating, withChess }
+  }, [rows])
 
   const load = useCallback(async () => {
     setStatus('loading')
@@ -68,9 +84,46 @@ export default function DashboardView({ session, onSignOut }) {
       )}
 
       {status === 'ready' && rows.length > 0 && (
-        <pre style={{ color: 'var(--muted)', fontSize: 12, overflow: 'auto' }}>
-          {JSON.stringify(rows, null, 2)}
-        </pre>
+        <>
+          <div className="dashboard__stats">
+            <div className="dashboard__stat">
+              <span className="dashboard__stat-label">Total</span>
+              <span className="dashboard__stat-value">{stats.total}</span>
+            </div>
+            <div className="dashboard__stat">
+              <span className="dashboard__stat-label">Rapid</span>
+              <span className="dashboard__stat-value">{stats.byTiempo.rapid}</span>
+            </div>
+            <div className="dashboard__stat">
+              <span className="dashboard__stat-label">Blitz</span>
+              <span className="dashboard__stat-value">{stats.byTiempo.blitz}</span>
+            </div>
+            <div className="dashboard__stat">
+              <span className="dashboard__stat-label">Bullet</span>
+              <span className="dashboard__stat-value">{stats.byTiempo.bullet}</span>
+            </div>
+          </div>
+
+          <div className="dashboard__stats-row">
+            <div className="dashboard__stat">
+              <span className="dashboard__stat-label">Rating prom · {stats.topTiempo}</span>
+              <span className="dashboard__stat-value">{stats.avgRating ?? '—'}</span>
+            </div>
+            <div className="dashboard__stat">
+              <span className="dashboard__stat-label">Con chess.com</span>
+              <span className="dashboard__stat-value">
+                {stats.withChess} / {stats.total}
+              </span>
+              <span className="dashboard__stat-sub">
+                {stats.total > 0 ? `${Math.round((stats.withChess / stats.total) * 100)}%` : '—'}
+              </span>
+            </div>
+          </div>
+
+          <pre style={{ color: 'var(--muted)', fontSize: 12, overflow: 'auto' }}>
+            {JSON.stringify(rows, null, 2)}
+          </pre>
+        </>
       )}
     </div>
   )
