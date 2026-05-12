@@ -682,3 +682,14 @@
     display: none;
   }
 }
+
+.dashboard__standings-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: var(--glass-bg);
+}
+
+.dashboard__standings-wrap tr[data-withdrawn='true'] {
+  opacity: 0.5;
+}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { generateRound } from '../lib/pairing'
+import { computeStandings } from '../lib/standings'
 import {
   addParticipants,
   deleteTournament,
@@ -198,6 +199,13 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
     (a, b) => b.seed_rating - a.seed_rating,
   )
 
+  const standings = participants.length > 0
+    ? computeStandings(
+        participants.map((p) => ({ id: p.id, seed_rating: p.seed_rating, withdrawn: p.withdrawn })),
+        matches,
+      )
+    : []
+
   return (
     <div className="dashboard__tournament-detail">
       <button type="button" className="dashboard__btn dashboard__btn--ghost" onClick={onBack}>
@@ -361,6 +369,50 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
           </div>
         )}
       </section>
+
+      {tournament.status !== 'draft' && standings.length > 0 && (
+        <section>
+          <div className="dashboard__section-head">
+            <h3 className="dashboard__section-title">
+              Standings · ronda {tournament.current_round} de {tournament.total_rounds ?? '?'}
+            </h3>
+          </div>
+          <div className="dashboard__standings-wrap">
+            <table className="dashboard__table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Jugador</th>
+                  <th>Pts</th>
+                  <th>Buchholz</th>
+                  <th>Wins</th>
+                  <th>Elo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {standings.map((row, idx) => {
+                  const p = findParticipant(participants, row.participantId)
+                  return (
+                    <tr key={row.participantId} data-withdrawn={row.withdrawn}>
+                      <td className="dashboard__muted">{idx + 1}</td>
+                      <td>
+                        {participantName(p)}
+                        {row.withdrawn && (
+                          <span className="dashboard__muted"> · retirado</span>
+                        )}
+                      </td>
+                      <td>{row.points}</td>
+                      <td>{row.buchholz}</td>
+                      <td>{row.wins}</td>
+                      <td>{row.seedRating}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {tournament.status !== 'draft' && (
         <RoundSection
