@@ -1,12 +1,9 @@
+import DashboardLogin from './components/DashboardLogin'
 import './Dashboard.css'
 
 export default function Dashboard() {
-  return (
-    <div className="dashboard">
-      <div className="dashboard__header">
-        <span className="dashboard__brand">techess · dashboard</span>
-      </div>
-      Dashboard shell
-    </div>
-  )
+  const fakeSignIn = async () => {
+    throw new Error('Stub: auth no implementado todavía')
+  }
+  return <DashboardLogin onSignIn={fakeSignIn} />
 }
