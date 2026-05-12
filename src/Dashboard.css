@@ -693,3 +693,30 @@
 .dashboard__standings-wrap tr[data-withdrawn='true'] {
   opacity: 0.5;
 }
+
+.dashboard__past-rounds {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard__accordion-head {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+}
+
+.dashboard__accordion-head:hover {
+  border-color: var(--ink-soft-16);
+}
+
+.dashboard__pairings--past {
+  margin-top: 4px;
+}

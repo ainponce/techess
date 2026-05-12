@@ -159,6 +159,39 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
     }
   }
 
+  const handleGenerateNext = async () => {
+    const currentMatches = matches.filter((m) => m.round_number === tournament.current_round)
+    const incomplete = currentMatches.filter((m) => m.result === null && m.white_id != null && m.black_id != null)
+    if (incomplete.length > 0) {
+      setErrorMsg('Falta cargar resultados de la ronda actual.')
+      return
+    }
+    if (tournament.current_round >= tournament.total_rounds) {
+      setErrorMsg('Esta era la última ronda. Cerrá el torneo cuando quieras.')
+      return
+    }
+
+    const nextRound = tournament.current_round + 1
+    const active = participants.filter((p) => !p.withdrawn)
+    try {
+      const { matches: newMatches, warnings } = generateRound(
+        active.map((p) => ({ id: p.id, seed_rating: p.seed_rating, withdrawn: p.withdrawn })),
+        matches,
+        { roundNumber: nextRound },
+      )
+      await insertMatches(newMatches.map((m) => ({ ...m, tournament_id: tournament.id })))
+      const next = await updateTournament(tournament.id, { current_round: nextRound })
+      setTournament(next)
+      await load()
+      if (warnings.length > 0) {
+        setErrorMsg(`Ronda generada con warnings: ${warnings.join('; ')}`)
+      }
+    } catch (err) {
+      console.warn('generate next failed', err)
+      setErrorMsg('No pudimos generar la próxima ronda.')
+    }
+  }
+
   const handleResult = async (matchId, result) => {
     const prev = matches
     setMatches((ms) => ms.map((m) => (m.id === matchId ? { ...m, result } : m)))
@@ -420,6 +453,22 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
           participants={participants}
           matches={matches.filter((m) => m.round_number === tournament.current_round)}
           onResult={handleResult}
+          onGenerateNext={handleGenerateNext}
+          canGenerate={
+            tournament.status === 'ongoing' &&
+            tournament.current_round < (tournament.total_rounds ?? 0) &&
+            matches
+              .filter((m) => m.round_number === tournament.current_round)
+              .every((m) => m.result !== null)
+          }
+        />
+      )}
+
+      {tournament.status !== 'draft' && tournament.current_round > 1 && (
+        <PastRounds
+          tournament={tournament}
+          participants={participants}
+          matches={matches}
         />
       )}
 
@@ -435,7 +484,7 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
   )
 }
 
-function RoundSection({ tournament, participants, matches, onResult }) {
+function RoundSection({ tournament, participants, matches, onResult, onGenerateNext, canGenerate }) {
   if (matches.length === 0) return null
   const canEdit = tournament.status === 'ongoing'
 
@@ -446,7 +495,13 @@ function RoundSection({ tournament, participants, matches, onResult }) {
           Ronda {tournament.current_round}
           {tournament.total_rounds && ` de ${tournament.total_rounds}`}
         </h3>
-        <button type="button" className="dashboard__btn" disabled>
+        <button
+          type="button"
+          className="dashboard__btn"
+          onClick={onGenerateNext}
+          disabled={!canGenerate}
+          title={!canGenerate ? 'Falta cargar resultados' : undefined}
+        >
           Generar ronda {tournament.current_round + 1}
         </button>
       </div>
@@ -504,5 +559,56 @@ function ResultBtn({ current, mine, disabled, onClick, children }) {
     >
       {children}
     </button>
+  )
+}
+
+function PastRounds({ tournament, participants, matches }) {
+  const [openRound, setOpenRound] = useState(null)
+  const rounds = []
+  for (let r = 1; r < tournament.current_round; r++) {
+    rounds.push(r)
+  }
+  if (rounds.length === 0) return null
+
+  return (
+    <section className="dashboard__past-rounds">
+      <h3 className="dashboard__section-title">Rondas pasadas</h3>
+      {rounds.map((r) => {
+        const roundMatches = matches.filter((m) => m.round_number === r)
+        const isOpen = openRound === r
+        return (
+          <div key={r} className="dashboard__accordion">
+            <button
+              type="button"
+              className="dashboard__accordion-head"
+              onClick={() => setOpenRound(isOpen ? null : r)}
+            >
+              {isOpen ? '▼' : '▶'} Ronda {r} (completa)
+            </button>
+            {isOpen && (
+              <div className="dashboard__pairings dashboard__pairings--past">
+                {roundMatches.map((m, idx) => {
+                  const white = findParticipant(participants, m.white_id)
+                  const black = findParticipant(participants, m.black_id)
+                  return (
+                    <div key={m.id} className="dashboard__pairing">
+                      <span className="dashboard__muted">{idx + 1}</span>
+                      <span>{white ? participantName(white) : 'BYE'}</span>
+                      <span>{black ? participantName(black) : 'BYE'}</span>
+                      <span className="dashboard__muted">
+                        {m.result === 'white' && '1-0'}
+                        {m.result === 'black' && '0-1'}
+                        {m.result === 'draw' && '½-½'}
+                        {m.result === 'bye' && '1 punto'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </section>
   )
 }
