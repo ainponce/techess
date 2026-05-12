@@ -68,6 +68,17 @@ export default function DashboardView({ session, onSignOut }) {
     setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
   }
 
+  const [query, setQuery] = useState('')
+
+  const filteredRows = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return sortedRows
+    return sortedRows.filter((r) => {
+      const haystack = [r.nombre, r.email, r.chess_username].filter(Boolean).join(' ').toLowerCase()
+      return haystack.includes(q)
+    })
+  }, [sortedRows, query])
+
   const load = useCallback(async () => {
     setStatus('loading')
     const { data, error } = await supabase
@@ -167,68 +178,82 @@ export default function DashboardView({ session, onSignOut }) {
             </div>
           </div>
 
-          <div className="dashboard__table-wrap">
-            <table className="dashboard__table">
-              <thead>
-                <tr>
-                  {COLUMNS.map((col) => (
-                    <th key={col.key} onClick={() => toggleSort(col.key)}>
-                      {col.label}
-                      {sort.key === col.key ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : ''}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedRows.map((r) => {
-                  const rating = ratingOf(r)
-                  return (
-                    <tr key={r.id ?? `${r.email}-${r.created_at}`}>
-                      <td>{r.nombre}</td>
-                      <td>{r.email}</td>
-                      <td>{TIEMPO_LABEL[r.tiempo] ?? r.tiempo}</td>
-                      <td>
-                        {r.chess_username ? (
-                          <a
-                            className="dashboard__chess"
-                            href={r.chess_url ?? `https://www.chess.com/member/${r.chess_username}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {r.chess_avatar && (
-                              <img className="dashboard__chess-avatar" src={r.chess_avatar} alt="" />
-                            )}
-                            @{r.chess_username}
-                          </a>
-                        ) : (
-                          <span className="dashboard__muted">—</span>
-                        )}
-                      </td>
-                      <td>{rating ?? <span className="dashboard__muted">—</span>}</td>
-                      <td>
-                        {r.twitter_handle ? (
-                          <a
-                            className="dashboard__link"
-                            href={`https://x.com/${r.twitter_handle}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            @{r.twitter_handle}
-                          </a>
-                        ) : (
-                          <span className="dashboard__muted">—</span>
-                        )}
-                      </td>
-                      <td>{formatDate(r.created_at)}</td>
+          <input
+            className="dashboard__search"
+            type="search"
+            placeholder="Buscar por nombre, email, chess.com…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+
+          {filteredRows.length === 0 ? (
+            <div className="dashboard__state">Nada coincide con esa búsqueda.</div>
+          ) : (
+            <>
+              <div className="dashboard__table-wrap">
+                <table className="dashboard__table">
+                  <thead>
+                    <tr>
+                      {COLUMNS.map((col) => (
+                        <th key={col.key} onClick={() => toggleSort(col.key)}>
+                          {col.label}
+                          {sort.key === col.key ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : ''}
+                        </th>
+                      ))}
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div className="dashboard__footer">
-            {sortedRows.length} registro{sortedRows.length === 1 ? '' : 's'} · ordenado por {COLUMNS.find((c) => c.key === sort.key)?.label}
-          </div>
+                  </thead>
+                  <tbody>
+                    {filteredRows.map((r) => {
+                      const rating = ratingOf(r)
+                      return (
+                        <tr key={r.id ?? `${r.email}-${r.created_at}`}>
+                          <td>{r.nombre}</td>
+                          <td>{r.email}</td>
+                          <td>{TIEMPO_LABEL[r.tiempo] ?? r.tiempo}</td>
+                          <td>
+                            {r.chess_username ? (
+                              <a
+                                className="dashboard__chess"
+                                href={r.chess_url ?? `https://www.chess.com/member/${r.chess_username}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {r.chess_avatar && (
+                                  <img className="dashboard__chess-avatar" src={r.chess_avatar} alt="" />
+                                )}
+                                @{r.chess_username}
+                              </a>
+                            ) : (
+                              <span className="dashboard__muted">—</span>
+                            )}
+                          </td>
+                          <td>{rating ?? <span className="dashboard__muted">—</span>}</td>
+                          <td>
+                            {r.twitter_handle ? (
+                              <a
+                                className="dashboard__link"
+                                href={`https://x.com/${r.twitter_handle}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                @{r.twitter_handle}
+                              </a>
+                            ) : (
+                              <span className="dashboard__muted">—</span>
+                            )}
+                          </td>
+                          <td>{formatDate(r.created_at)}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="dashboard__footer">
+                {filteredRows.length} registro{filteredRows.length === 1 ? '' : 's'} · ordenado por {COLUMNS.find((c) => c.key === sort.key)?.label}
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
