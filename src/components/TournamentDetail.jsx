@@ -8,6 +8,7 @@ import {
   listMatches,
   listParticipants,
   removeParticipant,
+  updateMatchResult,
   updateParticipantRating,
   updateTournament,
   withdrawParticipant,
@@ -20,6 +21,14 @@ const STATUS_LABEL = {
   finished: 'terminado',
 }
 
+function participantName(p) {
+  return p?.registration?.nombre ?? '—'
+}
+
+function findParticipant(participants, id) {
+  return participants.find((p) => p.id === id)
+}
+
 export default function TournamentDetail({ tournamentId, session, onBack, onSessionExpired }) {
   const [status, setStatus] = useState('loading')
   const [tournament, setTournament] = useState(null)
@@ -28,16 +37,19 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
   const [editingRating, setEditingRating] = useState(null) // participant id
   const [editingValue, setEditingValue] = useState('')
   const [errorMsg, setErrorMsg] = useState(null)
+  const [matches, setMatches] = useState([])
 
   const load = useCallback(async () => {
     setStatus('loading')
     try {
-      const [t, parts] = await Promise.all([
+      const [t, parts, ms] = await Promise.all([
         getTournament(tournamentId),
         listParticipants(tournamentId),
+        listMatches(tournamentId),
       ])
       setTournament(t)
       setParticipants(parts)
+      setMatches(ms)
       setStatus('ready')
     } catch (err) {
       if (err.code === 'PGRST301' || err.message?.toLowerCase().includes('jwt')) {
@@ -143,6 +155,17 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
     } catch (err) {
       console.warn('start failed', err)
       setErrorMsg('No pudimos empezar el torneo.')
+    }
+  }
+
+  const handleResult = async (matchId, result) => {
+    const prev = matches
+    setMatches((ms) => ms.map((m) => (m.id === matchId ? { ...m, result } : m)))
+    try {
+      await updateMatchResult(matchId, result)
+    } catch (err) {
+      setMatches(prev)
+      setErrorMsg('No pudimos guardar el resultado.')
     }
   }
 
@@ -339,7 +362,14 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
         )}
       </section>
 
-      {/* Standings y rondas en tasks siguientes */}
+      {tournament.status !== 'draft' && (
+        <RoundSection
+          tournament={tournament}
+          participants={participants}
+          matches={matches.filter((m) => m.round_number === tournament.current_round)}
+          onResult={handleResult}
+        />
+      )}
 
       {showPicker && (
         <TournamentPlayerPicker
@@ -350,5 +380,77 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
         />
       )}
     </div>
+  )
+}
+
+function RoundSection({ tournament, participants, matches, onResult }) {
+  if (matches.length === 0) return null
+  const canEdit = tournament.status === 'ongoing'
+
+  return (
+    <section>
+      <div className="dashboard__section-head">
+        <h3 className="dashboard__section-title">
+          Ronda {tournament.current_round}
+          {tournament.total_rounds && ` de ${tournament.total_rounds}`}
+        </h3>
+        <button type="button" className="dashboard__btn" disabled>
+          Generar ronda {tournament.current_round + 1}
+        </button>
+      </div>
+
+      <div className="dashboard__pairings">
+        <div className="dashboard__pairing dashboard__pairing--head">
+          <span>#</span>
+          <span>Blancas</span>
+          <span>Negras</span>
+          <span>Resultado</span>
+        </div>
+        {matches.map((m, idx) => {
+          const white = findParticipant(participants, m.white_id)
+          const black = findParticipant(participants, m.black_id)
+          const isBye = m.result === 'bye'
+          return (
+            <div key={m.id} className="dashboard__pairing">
+              <span className="dashboard__muted">{idx + 1}</span>
+              <span>{white ? participantName(white) : <span className="dashboard__muted">BYE</span>}</span>
+              <span>{black ? participantName(black) : <span className="dashboard__muted">BYE</span>}</span>
+              <span className="dashboard__pairing-actions">
+                {isBye ? (
+                  <span className="dashboard__muted">1 punto (bye)</span>
+                ) : (
+                  <>
+                    <ResultBtn current={m.result} mine="white" disabled={!canEdit} onClick={() => onResult(m.id, 'white')}>
+                      1-0
+                    </ResultBtn>
+                    <ResultBtn current={m.result} mine="draw" disabled={!canEdit} onClick={() => onResult(m.id, 'draw')}>
+                      ½
+                    </ResultBtn>
+                    <ResultBtn current={m.result} mine="black" disabled={!canEdit} onClick={() => onResult(m.id, 'black')}>
+                      0-1
+                    </ResultBtn>
+                    {m.result && <span className="dashboard__pairing-check">✓</span>}
+                  </>
+                )}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function ResultBtn({ current, mine, disabled, onClick, children }) {
+  const isActive = current === mine
+  return (
+    <button
+      type="button"
+      className={`dashboard__btn dashboard__btn--xs ${isActive ? '' : 'dashboard__btn--ghost'}`}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {children}
+    </button>
   )
 }
