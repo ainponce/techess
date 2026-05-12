@@ -73,19 +73,23 @@ function colorDiff(history) {
 function tryPermutations(s1, s2, previousOpponents) {
   // Try the default pairing (s1[i] vs s2[i]); if any pair already met, swap
   // within s2 to find a valid arrangement. Returns null if impossible.
-  const indices = s2.map((_, i) => i)
-  const seen = new Set()
   const tryIt = (perm) => {
     for (let i = 0; i < s1.length; i++) {
-      const a = s1[i].id
-      const b = s2[perm[i]].id
-      if (previousOpponents.get(a)?.has(b)) return null
+      const aId = s1[i].id
+      const bId = s2[perm[i]].id
+      if (previousOpponents.get(aId)?.has(bId)) return null
     }
     return perm.map((j, i) => [s1[i], s2[j]])
   }
 
-  // Generate permutations bounded — for groups > 8 this becomes too many, but
-  // groups in Swiss are typically small. Fall back if not found.
+  // For large groups the factorial blowup is too costly (s2=8 → 40k permutations;
+  // s2=10 → 3.6M). Above 8 we just check the default order and let the caller
+  // fall back to greedy + warning if it has repeats.
+  if (s2.length > 8) {
+    return tryIt(s2.map((_, i) => i))
+  }
+
+  // Generate all permutations of s2 indices and try each in order.
   const permute = (arr) => {
     if (arr.length <= 1) return [arr]
     const out = []
@@ -96,10 +100,7 @@ function tryPermutations(s1, s2, previousOpponents) {
     return out
   }
 
-  for (const perm of permute(indices)) {
-    const key = perm.join(',')
-    if (seen.has(key)) continue
-    seen.add(key)
+  for (const perm of permute(s2.map((_, i) => i))) {
     const pairs = tryIt(perm)
     if (pairs) return pairs
   }
@@ -138,13 +139,29 @@ function assignColors(pair, colorHistory) {
     whiteId = a.id
   }
 
-  // Cap check: would this push someone to |diff| >= 3?
-  const wouldDiffA = diffA + (whiteId === a.id ? 1 : -1)
-  const wouldDiffB = diffB + (whiteId === b.id ? 1 : -1)
-  if (Math.abs(wouldDiffA) >= 3) {
-    whiteId = b.id
-  } else if (Math.abs(wouldDiffB) >= 3) {
-    whiteId = a.id
+  // Cap check: ensure neither player exceeds |colorDiff| >= 3 after assignment.
+  // If both options violate (e.g., both at +2 with same preference), per spec the
+  // senior (lex-larger id) takes the imposed (cap-breaking) assignment.
+  const checkCap = (wId) => {
+    const aw = wId === a.id
+    const newA = diffA + (aw ? 1 : -1)
+    const newB = diffB + (aw ? -1 : 1)
+    return { aViolates: Math.abs(newA) >= 3, bViolates: Math.abs(newB) >= 3 }
+  }
+  const initialCheck = checkCap(whiteId)
+  if (initialCheck.aViolates || initialCheck.bViolates) {
+    const other = whiteId === a.id ? b.id : a.id
+    const otherCheck = checkCap(other)
+    if (!otherCheck.aViolates && !otherCheck.bViolates) {
+      whiteId = other
+    } else {
+      // Both options violate. Senior (lex-larger id) gets the cap-break.
+      const senior = String(a.id).localeCompare(String(b.id)) > 0 ? a.id : b.id
+      const seniorViolatesInitial =
+        (senior === a.id && initialCheck.aViolates) ||
+        (senior === b.id && initialCheck.bViolates)
+      whiteId = seniorViolatesInitial ? whiteId : other
+    }
   }
 
   return { white_id: whiteId, black_id: whiteId === a.id ? b.id : a.id }
