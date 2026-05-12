@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
+import { generateRound } from '../lib/pairing'
 import {
   addParticipants,
   deleteTournament,
   getTournament,
+  insertMatches,
+  listMatches,
   listParticipants,
   removeParticipant,
   updateParticipantRating,
@@ -116,6 +119,33 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
     }
   }
 
+  const handleStart = async () => {
+    const active = participants.filter((p) => !p.withdrawn)
+    if (active.length < 2) {
+      setErrorMsg('Necesitás al menos 2 jugadores.')
+      return
+    }
+    if (!confirm(`¿Empezar el torneo con ${active.length} jugadores? Después no se pueden agregar/quitar (sí retirar).`)) return
+    try {
+      const totalRounds = Math.max(1, Math.ceil(Math.log2(active.length)))
+      const { matches } = generateRound(
+        active.map((p) => ({ id: p.id, seed_rating: p.seed_rating, withdrawn: p.withdrawn })),
+        [],
+        { roundNumber: 1 },
+      )
+      await insertMatches(matches.map((m) => ({ ...m, tournament_id: tournament.id })))
+      const next = await updateTournament(tournament.id, {
+        status: 'ongoing',
+        total_rounds: totalRounds,
+        current_round: 1,
+      })
+      setTournament(next)
+    } catch (err) {
+      console.warn('start failed', err)
+      setErrorMsg('No pudimos empezar el torneo.')
+    }
+  }
+
   if (status === 'loading') {
     return (
       <div>
@@ -171,7 +201,17 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
         <div className="dashboard__detail-actions">
           {tournament.status === 'draft' && (
             <>
-              <button type="button" className="dashboard__btn" disabled>
+              <button
+                type="button"
+                className="dashboard__btn"
+                onClick={handleStart}
+                disabled={participants.filter((p) => !p.withdrawn).length < 2}
+                title={
+                  participants.filter((p) => !p.withdrawn).length < 2
+                    ? 'Necesitás al menos 2 jugadores'
+                    : undefined
+                }
+              >
                 Empezar torneo
               </button>
               <button
