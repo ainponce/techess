@@ -36,7 +36,7 @@ export default function DashboardView({ session, onSignOut, onSessionExpired }) 
       </div>
 
       {tab === 'tournaments' ? (
-        <DashboardTournaments onSessionExpired={onSessionExpired} />
+        <DashboardTournaments session={session} onSessionExpired={onSessionExpired} />
       ) : (
         <DashboardRegistrations onSessionExpired={onSessionExpired} />
       )}
