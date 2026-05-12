@@ -6,12 +6,20 @@ const TIEMPO_LABEL = { rapid: 'Rapid', blitz: 'Blitz', bullet: 'Bullet' }
 const COLUMNS = [
   { key: 'nombre', label: 'Nombre' },
   { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Teléfono' },
   { key: 'tiempo', label: 'Tiempo' },
   { key: 'chess_username', label: 'Chess.com' },
   { key: 'rating', label: 'Rating' },
   { key: 'twitter_handle', label: 'Twitter' },
   { key: 'created_at', label: 'Fecha' },
 ]
+
+// wa.me wants only digits (no leading +).
+function waLink(phone) {
+  if (!phone) return null
+  const digits = phone.replace(/\D+/g, '')
+  return digits ? `https://wa.me/${digits}` : null
+}
 
 function ratingOf(row) {
   return row[`chess_rating_${row.tiempo}`] ?? null
@@ -75,7 +83,7 @@ export default function DashboardView({ session, onSignOut, onSessionExpired }) 
     const q = norm(query.trim())
     if (!q) return sortedRows
     return sortedRows.filter((r) => {
-      const haystack = norm([r.nombre, r.email, r.chess_username].filter(Boolean).join(' '))
+      const haystack = norm([r.nombre, r.email, r.phone, r.chess_username].filter(Boolean).join(' '))
       return haystack.includes(q)
     })
   }, [sortedRows, query])
@@ -182,7 +190,7 @@ export default function DashboardView({ session, onSignOut, onSessionExpired }) 
           <input
             className="dashboard__search"
             type="search"
-            placeholder="Buscar por nombre, email, chess.com…"
+            placeholder="Buscar por nombre, email, teléfono, chess.com…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -210,6 +218,20 @@ export default function DashboardView({ session, onSignOut, onSessionExpired }) 
                         <tr key={r.id ?? `${r.email}-${r.created_at}`}>
                           <td>{r.nombre}</td>
                           <td>{r.email}</td>
+                          <td>
+                            {r.phone ? (
+                              <a
+                                className="dashboard__link"
+                                href={waLink(r.phone) ?? '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {r.phone}
+                              </a>
+                            ) : (
+                              <span className="dashboard__muted">—</span>
+                            )}
+                          </td>
                           <td>{TIEMPO_LABEL[r.tiempo] ?? r.tiempo}</td>
                           <td>
                             {r.chess_username ? (

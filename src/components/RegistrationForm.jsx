@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 const INITIAL = {
   nombre: '',
   email: '',
+  phone: '',
   chessUsername: '',
   twitterHandle: '',
   tiempo: 'rapid',
@@ -31,6 +32,16 @@ function normalizeTwitter(raw) {
   const t = raw.trim().replace(/^@/, '')
   const fromUrl = t.match(/(?:x|twitter)\.com\/([^/?#]+)/i)
   return (fromUrl ? fromUrl[1] : t).replace(/^@/, '')
+}
+
+// Strip everything except digits and a single leading +. The DB CHECK
+// expects '^\+?[0-9]{7,20}$', so we normalize before insert.
+function normalizePhone(raw) {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  const hasPlus = trimmed.startsWith('+')
+  const digits = trimmed.replace(/\D+/g, '')
+  return (hasPlus ? '+' : '') + digits
 }
 
 export default function RegistrationForm({ onSubmitted }) {
@@ -98,10 +109,17 @@ export default function RegistrationForm({ onSubmitted }) {
 
     const found = lookup.status === 'found' ? lookup.profile : null
     const stats = lookup.status === 'found' ? lookup.stats : null
+    const normalizedPhone = normalizePhone(form.phone)
+    if (!/^\+?[0-9]{7,20}$/.test(normalizedPhone)) {
+      setSubmitError('Ingresá un teléfono válido (al menos 7 dígitos).')
+      setSubmitting(false)
+      return
+    }
     // Column names match public.techess_registrations exactly (snake_case).
     const payload = {
       nombre: form.nombre.trim(),
       email: form.email.trim().toLowerCase(),
+      phone: normalizedPhone,
       tiempo: form.tiempo,
       twitter_handle: normalizeTwitter(form.twitterHandle) || null,
       chess_username: found?.username ?? null,
@@ -159,6 +177,19 @@ export default function RegistrationForm({ onSubmitted }) {
           placeholder="vos@ejemplo.com"
           value={form.email}
           onChange={update('email')}
+        />
+      </label>
+
+      <label>
+        Teléfono (WhatsApp)
+        <input
+          required
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="+54 9 11 1234 5678"
+          value={form.phone}
+          onChange={update('phone')}
         />
       </label>
 
