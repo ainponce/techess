@@ -60,6 +60,11 @@ export default function DashboardRegistrations({ onSessionExpired }) {
     }
   }, [rows])
 
+  const [tournamentStats, setTournamentStats] = useState({
+    count: null,
+    avgPlayers: null,
+  })
+
   const [sort, setSort] = useState({ key: 'created_at', dir: 'desc' })
 
   const sortedRows = useMemo(() => {
@@ -109,6 +114,39 @@ export default function DashboardRegistrations({ onSessionExpired }) {
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    let cancelled = false
+    const fetchTournamentStats = async () => {
+      const { data, error } = await supabase
+        .from('tournaments')
+        .select('id, status, tournament_participants(count)')
+        .neq('status', 'draft')
+      if (cancelled) return
+      if (error) {
+        console.warn('tournament stats load failed', error)
+        setTournamentStats({ count: null, avgPlayers: null })
+        return
+      }
+      const count = data.length
+      if (count === 0) {
+        setTournamentStats({ count: 0, avgPlayers: null })
+        return
+      }
+      const totalPlayers = data.reduce(
+        (acc, t) => acc + (t.tournament_participants?.[0]?.count ?? 0),
+        0,
+      )
+      setTournamentStats({
+        count,
+        avgPlayers: Math.round(totalPlayers / count),
+      })
+    }
+    fetchTournamentStats()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <>
@@ -168,6 +206,30 @@ export default function DashboardRegistrations({ onSessionExpired }) {
             <div className="dashboard__stat">
               <span className="dashboard__stat-label">Rating prom · Bullet</span>
               <span className="dashboard__stat-value">{stats.avgBullet ?? '—'}</span>
+            </div>
+          </div>
+
+          <div className="dashboard__stats dashboard__stats--three">
+            <div className="dashboard__stat">
+              <span className="dashboard__stat-label">Ratio online</span>
+              <span className="dashboard__stat-value">
+                {stats.online.withAny} / {stats.online.total}
+              </span>
+              <span className="dashboard__stat-sub">
+                {stats.online.pct != null ? `${stats.online.pct}%` : '—'}
+              </span>
+            </div>
+            <div className="dashboard__stat">
+              <span className="dashboard__stat-label">Torneos organizados</span>
+              <span className="dashboard__stat-value">
+                {tournamentStats.count ?? '—'}
+              </span>
+            </div>
+            <div className="dashboard__stat">
+              <span className="dashboard__stat-label">Prom jugadores/torneo</span>
+              <span className="dashboard__stat-value">
+                {tournamentStats.avgPlayers ?? '—'}
+              </span>
             </div>
           </div>
 
