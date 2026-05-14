@@ -32,10 +32,19 @@
 }
 
 .dashboard__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-size: 14px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+.dashboard__brand-logo {
+  width: 28px;
+  height: 28px;
+  display: block;
 }
 
 .dashboard__user {

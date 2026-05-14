@@ -8,7 +8,10 @@ export default function DashboardView({ session, onSignOut, onSessionExpired }) 
   return (
     <div className="dashboard">
       <div className="dashboard__header">
-        <span className="dashboard__brand">techess · dashboard</span>
+        <span className="dashboard__brand">
+          <img className="dashboard__brand-logo" src="/logo.svg" alt="techess" />
+          dashboard
+        </span>
         <div className="dashboard__tabs">
           <button
             type="button"
