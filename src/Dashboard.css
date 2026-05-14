@@ -24,6 +24,16 @@
   color: var(--ink);
   font-family: var(--sans);
   padding: 24px;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: dashboard-fade-up 0.55s 0.05s ease-out forwards;
+}
+
+@keyframes dashboard-fade-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .dashboard__header {
@@ -36,16 +46,17 @@
 .dashboard__brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  letter-spacing: 0.18em;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
 .dashboard__brand-logo {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: block;
 }
 
@@ -63,8 +74,9 @@
   border: 1px solid transparent;
   border-radius: 6px;
   padding: 6px 12px;
-  font-size: 12px;
-  letter-spacing: 0.12em;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;
@@ -110,13 +122,16 @@
 }
 
 .dashboard-login__title {
-  font-size: 20px;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  font-weight: 600;
   margin-bottom: 4px;
 }
 
 .dashboard-login__eyebrow {
-  font-size: 12px;
-  letter-spacing: 0.18em;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -174,8 +189,9 @@
 }
 
 .dashboard__stat-label {
-  font-size: 11px;
-  letter-spacing: 0.16em;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -249,8 +265,9 @@
 }
 
 .dashboard__table th {
-  font-size: 11px;
-  letter-spacing: 0.14em;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--muted);
   cursor: pointer;
@@ -352,8 +369,9 @@
   border: 0;
   padding: 6px 14px;
   border-radius: 6px;
-  font-size: 12px;
-  letter-spacing: 0.14em;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
@@ -385,9 +403,9 @@
 }
 
 .dashboard__section-title {
-  font-size: 16px;
-  letter-spacing: 0.08em;
-  font-weight: 500;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  font-weight: 600;
 }
 
 .dashboard__tournaments-grid {
@@ -552,7 +570,9 @@
 }
 
 .dashboard__detail-title {
-  font-size: 22px;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  font-weight: 600;
   margin-bottom: 6px;
 }
 
