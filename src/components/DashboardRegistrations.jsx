@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { averageRatingByTiempo, onlineRatio } from '../lib/registration-stats'
 
 const TIEMPO_LABEL = { rapid: 'Rapid', blitz: 'Blitz', bullet: 'Bullet' }
 
@@ -45,19 +46,18 @@ export default function DashboardRegistrations({ onSessionExpired }) {
   const [rows, setRows] = useState([])
 
   const stats = useMemo(() => {
-    if (rows.length === 0) {
-      return { total: 0, byTiempo: { rapid: 0, blitz: 0, bullet: 0 }, topTiempo: 'rapid', avgRating: null, withChess: 0 }
-    }
     const byTiempo = { rapid: 0, blitz: 0, bullet: 0 }
     for (const r of rows) {
       if (byTiempo[r.tiempo] != null) byTiempo[r.tiempo]++
     }
-    const topTiempo = ['rapid', 'blitz', 'bullet'].reduce((top, t) => (byTiempo[t] > byTiempo[top] ? t : top), 'rapid')
-    const ratingCol = `chess_rating_${topTiempo}`
-    const ratings = rows.map((r) => r[ratingCol]).filter((v) => typeof v === 'number')
-    const avgRating = ratings.length > 0 ? Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length) : null
-    const withChess = rows.filter((r) => r.chess_username).length
-    return { total: rows.length, byTiempo, topTiempo, avgRating, withChess }
+    return {
+      total: rows.length,
+      byTiempo,
+      avgRapid: averageRatingByTiempo(rows, 'rapid'),
+      avgBlitz: averageRatingByTiempo(rows, 'blitz'),
+      avgBullet: averageRatingByTiempo(rows, 'bullet'),
+      online: onlineRatio(rows),
+    }
   }, [rows])
 
   const [sort, setSort] = useState({ key: 'created_at', dir: 'desc' })
@@ -156,19 +156,18 @@ export default function DashboardRegistrations({ onSessionExpired }) {
             </div>
           </div>
 
-          <div className="dashboard__stats-row">
+          <div className="dashboard__stats dashboard__stats--three">
             <div className="dashboard__stat">
-              <span className="dashboard__stat-label">Rating prom · {stats.topTiempo}</span>
-              <span className="dashboard__stat-value">{stats.avgRating ?? '—'}</span>
+              <span className="dashboard__stat-label">Rating prom · Rapid</span>
+              <span className="dashboard__stat-value">{stats.avgRapid ?? '—'}</span>
             </div>
             <div className="dashboard__stat">
-              <span className="dashboard__stat-label">Con chess.com</span>
-              <span className="dashboard__stat-value">
-                {stats.withChess} / {stats.total}
-              </span>
-              <span className="dashboard__stat-sub">
-                {stats.total > 0 ? `${Math.round((stats.withChess / stats.total) * 100)}%` : '—'}
-              </span>
+              <span className="dashboard__stat-label">Rating prom · Blitz</span>
+              <span className="dashboard__stat-value">{stats.avgBlitz ?? '—'}</span>
+            </div>
+            <div className="dashboard__stat">
+              <span className="dashboard__stat-label">Rating prom · Bullet</span>
+              <span className="dashboard__stat-value">{stats.avgBullet ?? '—'}</span>
             </div>
           </div>
 

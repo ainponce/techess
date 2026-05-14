@@ -184,6 +184,16 @@
   font-variant-numeric: tabular-nums;
 }
 
+.dashboard__stats--three {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 720px) {
+  .dashboard__stats--three {
+    grid-template-columns: 1fr;
+  }
+}
+
 .dashboard__stats-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
