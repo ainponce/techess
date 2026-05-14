@@ -149,6 +149,7 @@ export default function RegistrationForm({ onSubmitted }) {
 
     const found = chessLookup.status === 'found' ? chessLookup.profile : null
     const stats = chessLookup.status === 'found' ? chessLookup.stats : null
+    const lichessFound = lichessLookup.status === 'found' ? lichessLookup.user : null
     const normalizedPhone = normalizePhone(form.phone)
     if (!/^\+?[0-9]{7,20}$/.test(normalizedPhone)) {
       setSubmitError('Ingresá un teléfono válido (al menos 7 dígitos).')
@@ -170,6 +171,12 @@ export default function RegistrationForm({ onSubmitted }) {
       chess_rating_rapid: stats?.chess_rapid?.last?.rating ?? null,
       chess_rating_blitz: stats?.chess_blitz?.last?.rating ?? null,
       chess_rating_bullet: stats?.chess_bullet?.last?.rating ?? null,
+      lichess_username: lichessFound?.username ?? lichessFound?.id ?? null,
+      lichess_name: lichessFound?.profile?.realName ?? null,
+      lichess_url: lichessFound?.url ?? (lichessFound ? `https://lichess.org/@/${lichessFound.username ?? lichessFound.id}` : null),
+      lichess_rating_rapid: lichessFound?.perfs?.rapid?.rating ?? null,
+      lichess_rating_blitz: lichessFound?.perfs?.blitz?.rating ?? null,
+      lichess_rating_bullet: lichessFound?.perfs?.bullet?.rating ?? null,
     }
 
     const { error } = await supabase
@@ -177,9 +184,15 @@ export default function RegistrationForm({ onSubmitted }) {
       .insert(payload)
 
     if (error) {
-      // 23505 = unique_violation on lower(email)
       if (error.code === '23505') {
-        setSubmitError('Ese email ya está anotado.')
+        const msg = (error.message ?? '').toLowerCase()
+        if (msg.includes('chess_username')) {
+          setSubmitError('Ese usuario de chess.com ya está anotado.')
+        } else if (msg.includes('lichess_username')) {
+          setSubmitError('Ese usuario de Lichess ya está anotado.')
+        } else {
+          setSubmitError('Ese email ya está anotado.')
+        }
       } else {
         console.warn('supabase insert failed', error)
         setSubmitError('No pudimos guardar tu inscripción. Probá de nuevo.')
