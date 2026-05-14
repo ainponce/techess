@@ -10,7 +10,7 @@ const COLUMNS = [
   { key: 'phone', label: 'Teléfono' },
   { key: 'tiempo', label: 'Tiempo' },
   { key: 'chess_username', label: 'Chess.com' },
-  { key: 'rating', label: 'Rating' },
+  { key: 'lichess_username', label: 'Lichess' },
   { key: 'twitter_handle', label: 'Twitter' },
   { key: 'created_at', label: 'Fecha' },
 ]
@@ -21,10 +21,6 @@ function waLink(phone) {
   return digits ? `https://wa.me/${digits}` : null
 }
 
-function ratingOf(row) {
-  return row[`chess_rating_${row.tiempo}`] ?? null
-}
-
 function formatDate(iso) {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -32,8 +28,8 @@ function formatDate(iso) {
 }
 
 function compareRows(a, b, key) {
-  const va = key === 'rating' ? ratingOf(a) : a[key]
-  const vb = key === 'rating' ? ratingOf(b) : b[key]
+  const va = a[key]
+  const vb = b[key]
   if (va == null && vb == null) return 0
   if (va == null) return 1
   if (vb == null) return -1
@@ -259,7 +255,8 @@ export default function DashboardRegistrations({ onSessionExpired }) {
                   </thead>
                   <tbody>
                     {filteredRows.map((r) => {
-                      const rating = ratingOf(r)
+                      const chessRating = r[`chess_rating_${r.tiempo}`] ?? null
+                      const lichessRating = r[`lichess_rating_${r.tiempo}`] ?? null
                       return (
                         <tr key={r.id ?? `${r.email}-${r.created_at}`}>
                           <td>{r.nombre}</td>
@@ -291,12 +288,31 @@ export default function DashboardRegistrations({ onSessionExpired }) {
                                   <img className="dashboard__chess-avatar" src={r.chess_avatar} alt="" />
                                 )}
                                 @{r.chess_username}
+                                {chessRating != null && (
+                                  <span className="dashboard__muted"> · {TIEMPO_LABEL[r.tiempo].toLowerCase()} {chessRating}</span>
+                                )}
                               </a>
                             ) : (
                               <span className="dashboard__muted">—</span>
                             )}
                           </td>
-                          <td>{rating ?? <span className="dashboard__muted">—</span>}</td>
+                          <td>
+                            {r.lichess_username ? (
+                              <a
+                                className="dashboard__chess"
+                                href={r.lichess_url ?? `https://lichess.org/@/${r.lichess_username}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                @{r.lichess_username}
+                                {lichessRating != null && (
+                                  <span className="dashboard__muted"> · {TIEMPO_LABEL[r.tiempo].toLowerCase()} {lichessRating}</span>
+                                )}
+                              </a>
+                            ) : (
+                              <span className="dashboard__muted">—</span>
+                            )}
+                          </td>
                           <td>
                             {r.twitter_handle ? (
                               <a
