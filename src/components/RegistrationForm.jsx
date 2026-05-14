@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { normalizeLichessHandle, LICHESS_API } from '../lib/lichess'
 
 const INITIAL = {
   nombre: '',
   email: '',
   phone: '',
   chessUsername: '',
+  lichessUsername: '',
   twitterHandle: '',
   tiempo: 'rapid',
 }
 
 const TIEMPOS = [
-  { value: 'rapid', label: 'Rápido', statsKey: 'chess_rapid' },
-  { value: 'blitz', label: 'Blitz', statsKey: 'chess_blitz' },
-  { value: 'bullet', label: 'Bullet', statsKey: 'chess_bullet' },
+  { value: 'rapid', label: 'Rápido', statsKey: 'chess_rapid', lichessKey: 'rapid' },
+  { value: 'blitz', label: 'Blitz', statsKey: 'chess_blitz', lichessKey: 'blitz' },
+  { value: 'bullet', label: 'Bullet', statsKey: 'chess_bullet', lichessKey: 'bullet' },
 ]
 
 const CHESS_COM_API = 'https://api.chess.com/pub/player'
@@ -46,7 +48,8 @@ function normalizePhone(raw) {
 
 export default function RegistrationForm({ onSubmitted }) {
   const [form, setForm] = useState(INITIAL)
-  const [lookup, setLookup] = useState({ status: 'idle' })
+  const [chessLookup, setChessLookup] = useState({ status: 'idle' })
+  const [lichessLookup, setLichessLookup] = useState({ status: 'idle' })
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
 
@@ -58,18 +61,18 @@ export default function RegistrationForm({ onSubmitted }) {
   useEffect(() => {
     const handle = normalizeHandle(form.chessUsername)
     if (!handle) {
-      setLookup({ status: 'idle' })
+      setChessLookup({ status: 'idle' })
       return
     }
     const controller = new AbortController()
     const timer = setTimeout(async () => {
-      setLookup({ status: 'loading' })
+      setChessLookup({ status: 'loading' })
       try {
         const profileRes = await fetch(`${CHESS_COM_API}/${encodeURIComponent(handle)}`, {
           signal: controller.signal,
         })
         if (profileRes.status === 404) {
-          setLookup({ status: 'notfound' })
+          setChessLookup({ status: 'notfound' })
           return
         }
         if (!profileRes.ok) throw new Error(`HTTP ${profileRes.status}`)
@@ -78,11 +81,11 @@ export default function RegistrationForm({ onSubmitted }) {
           signal: controller.signal,
         })
         const stats = statsRes.ok ? await statsRes.json() : null
-        setLookup({ status: 'found', profile, stats })
+        setChessLookup({ status: 'found', profile, stats })
       } catch (err) {
         if (err.name === 'AbortError') return
         console.warn('chess.com lookup failed', err)
-        setLookup({ status: 'error' })
+        setChessLookup({ status: 'error' })
       }
     }, 450)
     return () => {
@@ -91,14 +94,51 @@ export default function RegistrationForm({ onSubmitted }) {
     }
   }, [form.chessUsername])
 
+  useEffect(() => {
+    const handle = normalizeLichessHandle(form.lichessUsername)
+    if (!handle) {
+      setLichessLookup({ status: 'idle' })
+      return
+    }
+    const controller = new AbortController()
+    const timer = setTimeout(async () => {
+      setLichessLookup({ status: 'loading' })
+      try {
+        const res = await fetch(`${LICHESS_API}/${encodeURIComponent(handle)}`, {
+          signal: controller.signal,
+        })
+        if (res.status === 404) {
+          setLichessLookup({ status: 'notfound' })
+          return
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        setLichessLookup({ status: 'found', user: data })
+      } catch (err) {
+        if (err.name === 'AbortError') return
+        console.warn('lichess lookup failed', err)
+        setLichessLookup({ status: 'error' })
+      }
+    }, 450)
+    return () => {
+      controller.abort()
+      clearTimeout(timer)
+    }
+  }, [form.lichessUsername])
+
   const tiempoMeta = useMemo(
     () => TIEMPOS.find((t) => t.value === form.tiempo) ?? TIEMPOS[0],
     [form.tiempo],
   )
 
   const currentRating =
-    lookup.status === 'found'
-      ? lookup.stats?.[tiempoMeta.statsKey]?.last?.rating ?? null
+    chessLookup.status === 'found'
+      ? chessLookup.stats?.[tiempoMeta.statsKey]?.last?.rating ?? null
+      : null
+
+  const currentLichessRating =
+    lichessLookup.status === 'found'
+      ? lichessLookup.user?.perfs?.[tiempoMeta.lichessKey]?.rating ?? null
       : null
 
   const onSubmit = async (e) => {
@@ -107,8 +147,8 @@ export default function RegistrationForm({ onSubmitted }) {
     setSubmitting(true)
     setSubmitError(null)
 
-    const found = lookup.status === 'found' ? lookup.profile : null
-    const stats = lookup.status === 'found' ? lookup.stats : null
+    const found = chessLookup.status === 'found' ? chessLookup.profile : null
+    const stats = chessLookup.status === 'found' ? chessLookup.stats : null
     const normalizedPhone = normalizePhone(form.phone)
     if (!/^\+?[0-9]{7,20}$/.test(normalizedPhone)) {
       setSubmitError('Ingresá un teléfono válido (al menos 7 dígitos).')
@@ -203,7 +243,24 @@ export default function RegistrationForm({ onSubmitted }) {
           value={form.chessUsername}
           onChange={update('chessUsername')}
         />
-        <ChessComHint lookup={lookup} tiempoLabel={tiempoMeta.label} rating={currentRating} />
+        <ChessComHint lookup={chessLookup} tiempoLabel={tiempoMeta.label} rating={currentRating} />
+      </label>
+
+      <label>
+        Usuario de Lichess <span className="form__optional">(opcional)</span>
+        <input
+          placeholder="DrNykterstein"
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          value={form.lichessUsername}
+          onChange={update('lichessUsername')}
+        />
+        <LichessHint
+          lookup={lichessLookup}
+          tiempoLabel={tiempoMeta.label}
+          rating={currentLichessRating}
+        />
       </label>
 
       <label>
@@ -240,6 +297,39 @@ export default function RegistrationForm({ onSubmitted }) {
         <p className="form__hint form__hint--warn">{submitError}</p>
       )}
     </form>
+  )
+}
+
+function LichessHint({ lookup, tiempoLabel, rating }) {
+  if (lookup.status === 'idle') return null
+  if (lookup.status === 'loading')
+    return <div className="form__hint">BUSCANDO…</div>
+  if (lookup.status === 'notfound')
+    return (
+      <div className="form__hint form__hint--warn">
+        NO ENCONTRAMOS ESE USUARIO
+      </div>
+    )
+  if (lookup.status === 'error')
+    return (
+      <div className="form__hint form__hint--warn">
+        NO PUDIMOS CONSULTAR LICHESS
+      </div>
+    )
+  const { user } = lookup
+  const displayName =
+    user.profile?.realName?.trim() || `@${user.username ?? user.id}`
+  return (
+    <div className="form__hint form__hint--found">
+      <span className="form__hint-text">
+        <span className="form__hint-name">{displayName}</span>
+        {rating != null && (
+          <span className="form__hint-rating">
+            {tiempoLabel} {rating}
+          </span>
+        )}
+      </span>
+    </div>
   )
 }
 
