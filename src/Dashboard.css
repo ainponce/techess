@@ -485,6 +485,23 @@
   font-size: 18px;
 }
 
+.dashboard__modal-body {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.dashboard__btn--destructive {
+  background: rgba(255, 138, 128, 0.14);
+  color: #ff8a80;
+  border: 1px solid rgba(255, 138, 128, 0.4);
+}
+
+.dashboard__btn--destructive:hover:not(:disabled) {
+  border-color: #ff8a80;
+}
+
 .dashboard__modal-label {
   display: flex;
   flex-direction: column;

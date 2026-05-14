@@ -15,6 +15,7 @@ import {
   withdrawParticipant,
 } from '../lib/tournaments'
 import TournamentPlayerPicker from './TournamentPlayerPicker'
+import ConfirmModal from './ConfirmModal'
 
 const STATUS_LABEL = {
   draft: 'draft',
@@ -40,6 +41,14 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
   const [errorMsg, setErrorMsg] = useState(null)
   const [warningMsg, setWarningMsg] = useState(null)
   const [matches, setMatches] = useState([])
+  const [confirmState, setConfirmState] = useState(null)
+
+  const closeConfirm = () => setConfirmState(null)
+  const runConfirm = () => {
+    const fn = confirmState?.onConfirm
+    setConfirmState(null)
+    fn?.()
+  }
 
   const load = useCallback(async () => {
     setStatus('loading')
@@ -77,24 +86,36 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
     }
   }
 
-  const handleRemove = async (participantId) => {
-    if (!confirm('¿Sacar a este jugador del torneo?')) return
-    try {
-      await removeParticipant(participantId)
-      await load()
-    } catch (err) {
-      setErrorMsg('No pudimos sacar al jugador.')
-    }
+  const handleRemove = (participantId) => {
+    setConfirmState({
+      title: 'Sacar jugador',
+      body: '¿Sacar a este jugador del torneo?',
+      confirmLabel: 'Sacar',
+      onConfirm: async () => {
+        try {
+          await removeParticipant(participantId)
+          await load()
+        } catch (err) {
+          setErrorMsg('No pudimos sacar al jugador.')
+        }
+      },
+    })
   }
 
-  const handleWithdraw = async (participantId) => {
-    if (!confirm('¿Retirar a este jugador? Sus partidos pasados quedan en standings.')) return
-    try {
-      await withdrawParticipant(participantId)
-      await load()
-    } catch (err) {
-      setErrorMsg('No pudimos retirar al jugador.')
-    }
+  const handleWithdraw = (participantId) => {
+    setConfirmState({
+      title: 'Retirar jugador',
+      body: '¿Retirar a este jugador? Sus partidos pasados quedan en standings.',
+      confirmLabel: 'Retirar',
+      onConfirm: async () => {
+        try {
+          await withdrawParticipant(participantId)
+          await load()
+        } catch (err) {
+          setErrorMsg('No pudimos retirar al jugador.')
+        }
+      },
+    })
   }
 
   const handleSaveRating = async (participantId) => {
@@ -113,52 +134,71 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
     }
   }
 
-  const handleDelete = async () => {
-    if (!confirm(`¿Eliminar '${tournament.name}'? Esta acción no se puede deshacer.`)) return
-    try {
-      await deleteTournament(tournament.id)
-      onBack()
-    } catch (err) {
-      setErrorMsg('No pudimos eliminar el torneo.')
-    }
+  const handleDelete = () => {
+    setConfirmState({
+      title: 'Eliminar torneo',
+      body: `¿Eliminar '${tournament.name}'? Esta acción no se puede deshacer.`,
+      confirmLabel: 'Eliminar',
+      tone: 'destructive',
+      onConfirm: async () => {
+        try {
+          await deleteTournament(tournament.id)
+          onBack()
+        } catch (err) {
+          setErrorMsg('No pudimos eliminar el torneo.')
+        }
+      },
+    })
   }
 
-  const handleFinish = async () => {
-    if (!confirm(`¿Cerrar el torneo '${tournament.name}'?`)) return
-    try {
-      const next = await updateTournament(tournament.id, { status: 'finished' })
-      setTournament(next)
-    } catch (err) {
-      setErrorMsg('No pudimos cerrar el torneo.')
-    }
+  const handleFinish = () => {
+    setConfirmState({
+      title: 'Cerrar torneo',
+      body: `¿Cerrar el torneo '${tournament.name}'?`,
+      confirmLabel: 'Cerrar torneo',
+      onConfirm: async () => {
+        try {
+          const next = await updateTournament(tournament.id, { status: 'finished' })
+          setTournament(next)
+        } catch (err) {
+          setErrorMsg('No pudimos cerrar el torneo.')
+        }
+      },
+    })
   }
 
-  const handleStart = async () => {
+  const handleStart = () => {
     const active = participants.filter((p) => !p.withdrawn)
     if (active.length < 2) {
       setErrorMsg('Necesitás al menos 2 jugadores.')
       return
     }
-    if (!confirm(`¿Empezar el torneo con ${active.length} jugadores? Después no se pueden agregar/quitar (sí retirar).`)) return
-    try {
-      const totalRounds = Math.max(1, Math.ceil(Math.log2(active.length)))
-      const { matches } = generateRound(
-        active.map((p) => ({ id: p.id, seed_rating: p.seed_rating, withdrawn: p.withdrawn })),
-        [],
-        { roundNumber: 1 },
-      )
-      await insertMatches(matches.map((m) => ({ ...m, tournament_id: tournament.id })))
-      const next = await updateTournament(tournament.id, {
-        status: 'ongoing',
-        total_rounds: totalRounds,
-        current_round: 1,
-      })
-      setTournament(next)
-      await load()
-    } catch (err) {
-      console.warn('start failed', err)
-      setErrorMsg('No pudimos empezar el torneo.')
-    }
+    setConfirmState({
+      title: 'Empezar torneo',
+      body: `¿Empezar el torneo con ${active.length} jugadores? Después no se pueden agregar/quitar (sí retirar).`,
+      confirmLabel: 'Empezar',
+      onConfirm: async () => {
+        try {
+          const totalRounds = Math.max(1, Math.ceil(Math.log2(active.length)))
+          const { matches } = generateRound(
+            active.map((p) => ({ id: p.id, seed_rating: p.seed_rating, withdrawn: p.withdrawn })),
+            [],
+            { roundNumber: 1 },
+          )
+          await insertMatches(matches.map((m) => ({ ...m, tournament_id: tournament.id })))
+          const next = await updateTournament(tournament.id, {
+            status: 'ongoing',
+            total_rounds: totalRounds,
+            current_round: 1,
+          })
+          setTournament(next)
+          await load()
+        } catch (err) {
+          console.warn('start failed', err)
+          setErrorMsg('No pudimos empezar el torneo.')
+        }
+      },
+    })
   }
 
   const handleGenerateNext = async () => {
@@ -486,6 +526,17 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
           onSessionExpired={onSessionExpired}
         />
       )}
+
+      <ConfirmModal
+        open={!!confirmState}
+        title={confirmState?.title}
+        body={confirmState?.body}
+        confirmLabel={confirmState?.confirmLabel}
+        cancelLabel={confirmState?.cancelLabel}
+        tone={confirmState?.tone}
+        onConfirm={runConfirm}
+        onCancel={closeConfirm}
+      />
     </div>
   )
 }
