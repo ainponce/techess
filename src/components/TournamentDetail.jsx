@@ -250,7 +250,7 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
   if (status === 'loading') {
     return (
       <div>
-        <button type="button" className="dashboard__btn dashboard__btn--ghost" onClick={onBack}>
+        <button type="button" className="dashboard__back-btn" onClick={onBack}>
           ← Volver
         </button>
         <div className="dashboard__skeleton-row" />
@@ -261,7 +261,7 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
   if (status === 'error') {
     return (
       <div>
-        <button type="button" className="dashboard__btn dashboard__btn--ghost" onClick={onBack}>
+        <button type="button" className="dashboard__back-btn" onClick={onBack}>
           ← Volver
         </button>
         <div className="dashboard__state">

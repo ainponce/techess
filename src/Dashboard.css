@@ -262,6 +262,14 @@
   white-space: nowrap;
 }
 
+.dashboard__table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.dashboard__table tbody tr:hover {
+  background: var(--ink-soft-08);
+}
+
 .dashboard__table th {
   font-family: var(--mono);
   font-size: 10px;
@@ -592,6 +600,54 @@
   gap: 16px;
 }
 
+.dashboard__back-btn {
+  align-self: flex-start;
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  padding: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.dashboard__back-btn:hover {
+  color: var(--ink);
+  transform: translateX(-2px);
+}
+
+.dashboard__tournament-detail > * {
+  opacity: 0;
+  transform: translateY(6px);
+  animation: dashboard-section-in 0.45s ease-out forwards;
+}
+
+.dashboard__tournament-detail > *:nth-child(1) { animation-delay: 0.02s; }
+.dashboard__tournament-detail > *:nth-child(2) { animation-delay: 0.08s; }
+.dashboard__tournament-detail > *:nth-child(3) { animation-delay: 0.14s; }
+.dashboard__tournament-detail > *:nth-child(4) { animation-delay: 0.2s; }
+.dashboard__tournament-detail > *:nth-child(5) { animation-delay: 0.26s; }
+.dashboard__tournament-detail > *:nth-child(n+6) { animation-delay: 0.32s; }
+
+@keyframes dashboard-section-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dashboard__tournament-status[data-status='ongoing'] {
+  animation: dashboard-status-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes dashboard-status-pulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
 .dashboard__detail-head {
   display: flex;
   justify-content: space-between;
@@ -680,6 +736,11 @@
   font-size: 13px;
   align-items: center;
   border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.dashboard__participant:hover {
+  background: var(--ink-soft-08);
 }
 
 .dashboard__participant[data-withdrawn='true'] {
@@ -751,6 +812,11 @@
   font-size: 13px;
   align-items: center;
   border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.dashboard__pairing:not(.dashboard__pairing--head):hover {
+  background: var(--ink-soft-08);
 }
 
 .dashboard__pairing--head {
