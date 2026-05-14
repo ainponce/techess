@@ -246,7 +246,11 @@ export default function DashboardRegistrations({ onSessionExpired }) {
                   <thead>
                     <tr>
                       {COLUMNS.map((col) => (
-                        <th key={col.key} onClick={() => toggleSort(col.key)}>
+                        <th
+                          key={col.key}
+                          onClick={() => toggleSort(col.key)}
+                          data-sorted={sort.key === col.key ? 'true' : 'false'}
+                        >
                           {col.label}
                           {sort.key === col.key ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : ''}
                         </th>
