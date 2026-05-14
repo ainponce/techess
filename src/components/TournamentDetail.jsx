@@ -285,7 +285,7 @@ export default function TournamentDetail({ tournamentId, session, onBack, onSess
 
   return (
     <div className="dashboard__tournament-detail">
-      <button type="button" className="dashboard__btn dashboard__btn--ghost" onClick={onBack}>
+      <button type="button" className="dashboard__back-btn" onClick={onBack}>
         ← Volver
       </button>
 
